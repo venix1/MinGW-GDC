@@ -1,0 +1,29 @@
+Index: pformat.c
+===================================================================
+RCS file: /cvs/src/src/winsup/mingw/mingwex/stdio/pformat.c,v
+retrieving revision 1.9
+diff -u -r1.9 pformat.c
+--- pformat.c	7 Jan 2011 22:57:00 -0000	1.9
++++ pformat.c	16 Jan 2012 17:49:19 -0000
+@@ -2229,20 +2229,9 @@
+ 	      /* Modifier is `l'; data type is `long' sized...
+ 	       */
+ 	      length = PFORMAT_LENGTH_LONG;
+-
+-#           ifndef _WIN32
+-	      /*
+-	       * Microsoft's MSVCRT implementation also uses `l'
+-	       * as a modifier for `long double'; if we don't want
+-	       * to support that, we end this case here...
+-	       */
+ 	      state = PFORMAT_END;
+ 	      break;
+ 
+-	      /* otherwise, we simply fall through...
+-	       */
+-#	    endif
+-
+ 	  case 'L':
+ 	    /*
+ 	     * Identify the appropriate argument as a `long double',
+

@@ -1,0 +1,239 @@
+diff -rup gcc-4.8-20130303~/gcc/config/i386/i386.c gcc-4.8-20130303/gcc/config/i386/i386.c
+--- gcc-4.8-20130303~/gcc/config/i386/i386.c	2013-02-21 04:57:10 -0600
++++ gcc-4.8-20130303/gcc/config/i386/i386.c	2013-03-16 08:20:53 -0500
+@@ -4617,6 +4617,26 @@ ix86_in_large_data_p (tree exp)
+   return false;
+ }
+ 
++/* */
++static section * mingw_select_section(tree, int, unsigned HOST_WIDE_INT) ATTRIBUTE_UNUSED;
++
++section *
++mingw_select_section (tree decl, int reloc,
++			    unsigned HOST_WIDE_INT align)
++{
++  const char *sname;
++  
++  if (TREE_CODE(decl) != VAR_DECL || !DECL_THREAD_LOCAL_P(decl))
++      return default_select_section(decl, reloc, align);
++
++  /* $GCC is required for symbol ordering. */
++  sname = ".tls$GCC";
++
++  if (!DECL_P (decl))
++    decl = NULL_TREE;
++  return get_named_section (decl, sname, reloc);
++}
++
+ /* Switch to the appropriate section for output of DECL.
+    DECL is either a `VAR_DECL' node or a constant of some sort.
+    RELOC indicates whether forming the initial value of DECL requires
+@@ -11930,6 +11950,9 @@ ix86_legitimate_constant_p (enum machine
+ 	    x = XVECEXP (x, 0, 0);
+ 	    return (GET_CODE (x) == SYMBOL_REF
+ 		    && SYMBOL_REF_TLS_MODEL (x) == TLS_MODEL_LOCAL_DYNAMIC);
++	  case UNSPEC_SECREL32:
++	    x = XVECEXP (x, 0, 0);
++	    return (GET_CODE (x) == SYMBOL_REF);
+ 	  default:
+ 	    return false;
+ 	  }
+@@ -12028,6 +12051,9 @@ legitimate_pic_operand_p (rtx x)
+ 	    x = XVECEXP (inner, 0, 0);
+ 	    return (GET_CODE (x) == SYMBOL_REF
+ 		    && SYMBOL_REF_TLS_MODEL (x) == TLS_MODEL_LOCAL_EXEC);
++      case UNSPEC_SECREL32:
++	    x = XVECEXP (inner, 0, 0);
++	    return (GET_CODE (x) == SYMBOL_REF);
+ 	  case UNSPEC_MACHOPIC_OFFSET:
+ 	    return legitimate_pic_address_disp_p (x);
+ 	  default:
+@@ -12169,6 +12195,9 @@ legitimate_pic_address_disp_p (rtx disp)
+       disp = XVECEXP (disp, 0, 0);
+       return (GET_CODE (disp) == SYMBOL_REF
+ 	      && SYMBOL_REF_TLS_MODEL (disp) == TLS_MODEL_LOCAL_DYNAMIC);
++    case UNSPEC_SECREL32:
++      disp = XVECEXP (disp, 0, 0);
++      return (GET_CODE (disp) == SYMBOL_REF);
+     }
+ 
+   return false;
+@@ -12348,6 +12377,7 @@ ix86_legitimate_address_p (enum machine_
+ 	  case UNSPEC_INDNTPOFF:
+ 	  case UNSPEC_NTPOFF:
+ 	  case UNSPEC_DTPOFF:
++	  case UNSPEC_SECREL32:
+ 	    break;
+ 
+ 	  case UNSPEC_STACK_CHECK:
+@@ -12784,6 +12814,36 @@ legitimize_tls_address (rtx x, enum tls_
+   enum machine_mode tp_mode = Pmode;
+   int type;
+ 
++/* Windows implements a single form of TLS. */
++#if TARGET_TLS_SECREL32
++  rtx reg = gen_rtx_SCRATCH (Pmode), insn;
++  
++  base = gen_reg_rtx (Pmode);
++  tp = gen_rtx_UNSPEC (Pmode, gen_rtvec (1, const0_rtx), UNSPEC_TP_MINGW);
++   
++  insn = gen_rtx_SET (VOIDmode, base, tp);
++  insn = gen_rtx_PARALLEL(VOIDmode, gen_rtvec(2, insn, gen_rtx_CLOBBER(VOIDmode, reg)));
++  insn = emit_insn (insn);  
++  
++  if (TARGET_64BIT)
++    {
++      off = gen_rtx_UNSPEC (SImode, gen_rtvec (1, x), UNSPEC_SECREL32);  
++      off = gen_rtx_CONST (SImode, off);
++
++      reg = gen_reg_rtx (Pmode);
++      insn = gen_rtx_SET (VOIDmode, gen_rtx_SUBREG(SImode, reg, 0), off);
++      insn = emit_insn (insn);  
++    
++      return gen_rtx_PLUS(Pmode, base, reg);     
++    }
++  else 
++    {
++      off = gen_rtx_UNSPEC (Pmode, gen_rtvec (1, x), UNSPEC_SECREL32);  
++      off = gen_rtx_CONST (Pmode, off);
++      return gen_rtx_PLUS(Pmode, base, off); 
++    }
++#endif
++
+   switch (model)
+     {
+     case TLS_MODEL_GLOBAL_DYNAMIC:
+@@ -13452,6 +13512,9 @@ output_pic_addr_const (FILE *file, rtx x
+ 	case UNSPEC_INDNTPOFF:
+ 	  fputs ("@indntpoff", file);
+ 	  break;
++	case UNSPEC_SECREL32:
++	  fputs ("@secrel32", file);
++	  break;
+ #if TARGET_MACHO
+ 	case UNSPEC_MACHOPIC_OFFSET:
+ 	  putc ('-', file);
+@@ -13477,7 +13540,12 @@ i386_output_dwarf_dtprel (FILE *file, in
+ {
+   fputs (ASM_LONG, file);
+   output_addr_const (file, x);
++  output_addr_const (file, x);
++  #if TARGET_TLS_SECREL32
++  fputs ("@secrel32", file);
++  #else
+   fputs ("@dtpoff", file);
++  #endif
+   switch (size)
+     {
+     case 4:
+@@ -14953,6 +15021,10 @@ i386_asm_output_addr_const_extra (FILE *
+       output_addr_const (file, op);
+       fputs ("@indntpoff", file);
+       break;
++    case UNSPEC_SECREL32:
++      output_addr_const (file, op);
++      fputs ("@secrel32", file);
++      break;
+ #if TARGET_MACHO
+     case UNSPEC_MACHOPIC_OFFSET:
+       output_addr_const (file, op);
+Only in gcc-4.8-20130303/gcc/config/i386: i386.c.orig
+diff -rup gcc-4.8-20130303~/gcc/config/i386/i386.md gcc-4.8-20130303/gcc/config/i386/i386.md
+--- gcc-4.8-20130303~/gcc/config/i386/i386.md	2013-01-28 14:42:55 -0600
++++ gcc-4.8-20130303/gcc/config/i386/i386.md	2013-03-16 08:10:58 -0500
+@@ -78,6 +78,7 @@
+   UNSPEC_PLTOFF
+   UNSPEC_MACHOPIC_OFFSET
+   UNSPEC_PCREL
++  UNSPEC_SECREL32
+ 
+   ;; Prologue support
+   UNSPEC_STACK_ALLOC
+@@ -89,6 +90,7 @@
+ 
+   ;; TLS support
+   UNSPEC_TP
++  UNSPEC_TP_MINGW
+   UNSPEC_TLS_GD
+   UNSPEC_TLS_LD_BASE
+   UNSPEC_TLSDESC
+@@ -12842,6 +12844,21 @@
+    (set_attr "memory" "load")
+    (set_attr "imm_disp" "false")])
+ 
++;; Location of thread base ptr
++(define_mode_attr mingw_tp_seg [(SI "fs:44") (DI "gs:88")])
++(define_mode_attr size_t       [(SI "4")     (DI "8")])
++(define_mode_attr tls_index    [(SI "__tls_index") (DI "_tls_index")])
++
++   
++;; Load and add the thread base pointer from %gs:44.
++(define_insn "load_tp_mingw_<mode>"
++  [(set (match_operand:P 0 "register_operand" "=r")
++	(unspec:P [(const_int 0)] UNSPEC_TP_MINGW))
++	(clobber (match_scratch:P 1 "=r"))]
++  ""
++  "movl\t<tls_index>, %k1\;mov<imodesuffix>\t%%<mingw_tp_seg>, %0\;mov<imodesuffix>\t(%0,%1,<size_t>), %0"
++  [(set_attr "type" "multi")])
++   
+ (define_insn "*add_tp_<mode>"
+   [(set (match_operand:P 0 "register_operand" "=r")
+ 	(plus:P (unspec:P [(const_int 0)] UNSPEC_TP)
+Only in gcc-4.8-20130303/gcc/config/i386: i386.md.orig
+diff -rup gcc-4.8-20130303~/gcc/config/i386/mingw32.h gcc-4.8-20130303/gcc/config/i386/mingw32.h
+--- gcc-4.8-20130303~/gcc/config/i386/mingw32.h	2013-01-10 14:38:27 -0600
++++ gcc-4.8-20130303/gcc/config/i386/mingw32.h	2013-03-16 08:19:21 -0500
+@@ -246,3 +246,12 @@ do {						         \
+ 
+ /* We should find a way to not have to update this manually.  */
+ #define LIBGCJ_SONAME "libgcj" /*LIBGCC_EH_EXTN*/ "-13.dll"
++
++/* Provide Windows TLS support */
++#ifdef HAVE_GAS_PE_SECREL32_RELOC
++#define TARGET_HAVE_TLS 1
++#define TARGET_TLS_SECREL32 1
++#define TARGET_ASM_SELECT_SECTION   mingw_select_section
++/* Lacking support for TLS common */
++#define ASM_OUTPUT_TLS_COMMON
++#endif
+\ No newline at end of file
+Only in gcc-4.8-20130303/gcc/config/i386: mingw32.h.orig
+Only in gcc-4.8-20130303/gcc/config/i386: mingw32.h.rej
+diff -rup gcc-4.8-20130303~/gcc/config/i386/predicates.md gcc-4.8-20130303/gcc/config/i386/predicates.md
+--- gcc-4.8-20130303~/gcc/config/i386/predicates.md	2013-01-10 14:38:27 -0600
++++ gcc-4.8-20130303/gcc/config/i386/predicates.md	2013-03-16 08:10:58 -0500
+@@ -140,6 +140,7 @@
+ 	  case UNSPEC_DTPOFF:
+ 	  case UNSPEC_GOTNTPOFF:
+ 	  case UNSPEC_NTPOFF:
++	  case UNSPEC_SECREL32:
+ 	    return true;
+ 	  default:
+ 	    break;
+Only in gcc-4.8-20130303/gcc/config/i386: predicates.md.orig
+diff -rup gcc-4.8-20130303~/gcc/config/i386/winnt.c gcc-4.8-20130303/gcc/config/i386/winnt.c
+--- gcc-4.8-20130303~/gcc/config/i386/winnt.c	2013-02-04 11:19:56 -0600
++++ gcc-4.8-20130303/gcc/config/i386/winnt.c	2013-03-16 08:10:58 -0500
+@@ -412,6 +412,8 @@ i386_pe_unique_section (tree decl, int r
+     prefix = ".text$";
+   else if (decl_readonly_section (decl, reloc))
+     prefix = ".rdata$";
++  else if (DECL_THREAD_LOCAL_P(decl))
++    prefix = ".tls$GCC_";
+   else
+     prefix = ".data$";
+   len = strlen (name) + strlen (prefix);
+Only in gcc-4.8-20130303/gcc/config/i386: winnt.c.orig
+diff -rup gcc-4.8-20130303~/libgcc/unwind.inc gcc-4.8-20130303/libgcc/unwind.inc
+--- gcc-4.8-20130303~/libgcc/unwind.inc	2013-02-04 13:06:20 -0600
++++ gcc-4.8-20130303/libgcc/unwind.inc	2013-03-24 08:07:25 -0500
+@@ -127,7 +127,8 @@ _Unwind_RaiseException(struct _Unwind_Ex
+   exc->private_1 = 0;
+   exc->private_2 = uw_identify_context (&cur_context);
+ 
+-  cur_context = this_context;
++  // Not sure the purpose of this but it breaks exceptions.
++  // cur_context = this_context;
+   code = _Unwind_RaiseException_Phase2 (exc, &cur_context);
+   if (code != _URC_INSTALL_CONTEXT)
+     return code;

@@ -1,0 +1,42 @@
+diff -rup mingwrt-3.20-mingw32~/mingwex/stdio/pformat.c mingwrt-3.20-mingw32/mingwex/stdio/pformat.c
+--- mingwrt-3.20-mingw32~/mingwex/stdio/pformat.c	2011-01-07 16:57:00 -0600
++++ mingwrt-3.20-mingw32/mingwex/stdio/pformat.c	2013-03-30 17:29:05 -0500
+@@ -2229,20 +2229,9 @@ int __pformat( int flags, void *dest, in
+ 	      /* Modifier is `l'; data type is `long' sized...
+ 	       */
+ 	      length = PFORMAT_LENGTH_LONG;
+-
+-#           ifndef _WIN32
+-	      /*
+-	       * Microsoft's MSVCRT implementation also uses `l'
+-	       * as a modifier for `long double'; if we don't want
+-	       * to support that, we end this case here...
+-	       */
+ 	      state = PFORMAT_END;
+ 	      break;
+ 
+-	      /* otherwise, we simply fall through...
+-	       */
+-#	    endif
+-
+ 	  case 'L':
+ 	    /*
+ 	     * Identify the appropriate argument as a `long double',
+diff -rup mingwrt-3.20-mingw32~/tlssup.c mingwrt-3.20-mingw32/tlssup.c
+--- mingwrt-3.20-mingw32~/tlssup.c	2011-08-23 17:16:27 -0500
++++ mingwrt-3.20-mingw32/tlssup.c	2013-03-30 17:29:32 -0500
+@@ -47,12 +47,12 @@ _CRTALLOC(".CRT$XLZ") PIMAGE_TLS_CALLBAC
+ 
+ #ifdef _WIN64
+ _CRTALLOC(".tls") const IMAGE_TLS_DIRECTORY64 _tls_used = {
+-  (ULONGLONG) &_tls_start+1, (ULONGLONG) &_tls_end, (ULONGLONG) &_tls_index,
++  (ULONGLONG) &_tls_start, (ULONGLONG) &_tls_end, (ULONGLONG) &_tls_index,
+   (ULONGLONG) (&__xl_a+1), (ULONG) 0, (ULONG) 0
+ };
+ #else
+ _CRTALLOC(".tls") const IMAGE_TLS_DIRECTORY _tls_used = {
+-  (ULONG)(ULONG_PTR) &_tls_start+1, (ULONG)(ULONG_PTR) &_tls_end,
++  (ULONG)(ULONG_PTR) &_tls_start, (ULONG)(ULONG_PTR) &_tls_end,
+   (ULONG)(ULONG_PTR) &_tls_index, (ULONG)(ULONG_PTR) (&__xl_a+1),
+   (ULONG) 0, (ULONG) 0
+ };
