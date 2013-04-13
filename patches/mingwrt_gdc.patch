@@ -1,7 +1,8 @@
-diff -rup mingwrt-3.20-mingw32~/mingwex/stdio/pformat.c mingwrt-3.20-mingw32/mingwex/stdio/pformat.c
---- mingwrt-3.20-mingw32~/mingwex/stdio/pformat.c	2011-01-07 16:57:00 -0600
-+++ mingwrt-3.20-mingw32/mingwex/stdio/pformat.c	2013-03-30 17:29:05 -0500
-@@ -2229,20 +2229,9 @@ int __pformat( int flags, void *dest, in
+diff --git a/mingwex/stdio/pformat.c b/mingwex/stdio/pformat.c
+index 854ad5b..bca6843 100644
+--- a/mingwex/stdio/pformat.c
++++ b/mingwex/stdio/pformat.c
+@@ -2229,20 +2229,9 @@ int __pformat( int flags, void *dest, int max, const char *fmt, va_list argv )
  	      /* Modifier is `l'; data type is `long' sized...
  	       */
  	      length = PFORMAT_LENGTH_LONG;
@@ -22,10 +23,11 @@ diff -rup mingwrt-3.20-mingw32~/mingwex/stdio/pformat.c mingwrt-3.20-mingw32/min
  	  case 'L':
  	    /*
  	     * Identify the appropriate argument as a `long double',
-diff -rup mingwrt-3.20-mingw32~/tlssup.c mingwrt-3.20-mingw32/tlssup.c
---- mingwrt-3.20-mingw32~/tlssup.c	2011-08-23 17:16:27 -0500
-+++ mingwrt-3.20-mingw32/tlssup.c	2013-03-30 17:29:32 -0500
-@@ -47,12 +47,12 @@ _CRTALLOC(".CRT$XLZ") PIMAGE_TLS_CALLBAC
+diff --git a/tlssup.c b/tlssup.c
+index e1685f5..3c82448 100644
+--- a/tlssup.c
++++ b/tlssup.c
+@@ -47,12 +47,12 @@ _CRTALLOC(".CRT$XLZ") PIMAGE_TLS_CALLBACK __xl_z = 0;
  
  #ifdef _WIN64
  _CRTALLOC(".tls") const IMAGE_TLS_DIRECTORY64 _tls_used = {
@@ -40,3 +42,13 @@ diff -rup mingwrt-3.20-mingw32~/tlssup.c mingwrt-3.20-mingw32/tlssup.c
    (ULONG)(ULONG_PTR) &_tls_index, (ULONG)(ULONG_PTR) (&__xl_a+1),
    (ULONG) 0, (ULONG) 0
  };
+@@ -96,7 +96,8 @@ __dyn_tls_init (HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
+       return TRUE;
+     }
+ 
+-  for (pfunc = &__xd_a + 1; pfunc != &__xd_z; ++pfunc)
++  /* GCC is optmizing out the intial test causing errors. Removing the +1 fixes */  
++  for (pfunc = &__xd_a; pfunc != &__xd_z; ++pfunc)
+     {
+       if (*pfunc != NULL)
+         (*pfunc)();
