@@ -1,0 +1,185 @@
+diff --git a/gcc/d/d-spec.c b/gcc/d/d-spec.c
+index 1d03b97..233bc11 100644
+--- a/gcc/d/d-spec.c
++++ b/gcc/d/d-spec.c
+@@ -55,6 +55,13 @@
+ #define LIBPHOBOS_PROFILE LIBPHOBOS
+ #endif
+ 
++#ifndef LIBPHOBOS_DMAIN
++#define LIBPHOBOS_DMAIN ":dmain.o"
++#endif
++#ifndef LIBPHOBOS_DMAIN_PROFILE
++#define LIBPHOBOS_DMAIN_PROFILE LIBPHOBOS_DMAIN
++#endif
++
+ /* mingw and cygwin don't have pthread. %% TODO: check darwin.  */
+ #if TARGET_WINDOS || TARGET_OSX || TARGET_ANDROID_D
+ #define USE_PTHREADS	0
+@@ -75,6 +82,10 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+   /* Used by -debuglib */
+   int saw_debug_flag = 0;
+ 
++  /* Determines if 'dmain.o' should be linked.  This should be set to 0 if
++     an entrypoint other than 'main' is used. */
++  int include_dmain = 1;
++
+   /* What do with libgphobos:
+      -1 means we should not link in libgphobos
+      0  means we should link in libgphobos if it is needed
+@@ -303,6 +314,19 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 
+ 	      break;
+ 	    }
++           
++	/* Options that signify a non main entry point. */
++        case OPT_fno_dmain:
++        case OPT_shared:
++#if WINDOS
++        case OPT_mwindows:
++        case OPT_mdll:
++	
++#endif
++	    {
++              include_dmain = 0;
++              break;
++	    }
+ 	}
+     }
+ 
+@@ -417,6 +441,16 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+   /* Add `-lgphobos' if we haven't already done so.  */
+   if (library > 0 && phobos)
+     {
++      /* Add dmain.o as well. Must be added before phobos to properly resolve
++         symbols. */
++      if (include_dmain)
++      {
++          generate_option (OPT_l, saw_profile_flag ? LIBPHOBOS_DMAIN_PROFILE : LIBPHOBOS_DMAIN, 1,
++                           CL_DRIVER, &new_decoded_options[j]);
++          added_libraries++;
++          j++;
++      }
++
+ #ifdef HAVE_LD_STATIC_DYNAMIC
+       if (library > 1 && !static_link)
+ 	{
+@@ -424,6 +458,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 			   &new_decoded_options[j]);
+ 	  j++;
+ 	}
++
+ #endif
+ 
+       generate_option (OPT_l, saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS, 1,
+diff --git a/gcc/d/lang.opt b/gcc/d/lang.opt
+index 3962865..fcab36a 100644
+--- a/gcc/d/lang.opt
++++ b/gcc/d/lang.opt
+@@ -186,6 +186,10 @@ static-libphobos
+ Driver
+ Link the standard D library statically in the compilation
+ 
++fno-dmain
++Driver
++Do not link phobos dmain.o.
++
+ Wall
+ D
+ ; Documented in c.opt
+@@ -205,4 +209,3 @@ D
+ Wunknown-pragmas
+ D
+ ; Documented in c.opt
+-
+diff --git a/libphobos/Makefile.am b/libphobos/Makefile.am
+index c3c3c8c..8fd8c6d 100644
+--- a/libphobos/Makefile.am
++++ b/libphobos/Makefile.am
+@@ -159,6 +159,7 @@ clean-local:
+ 	rm -f unittest.o
+ 	rm -f unittest$(EXEEXT)
+ 	rm -f libgphobos2.a
++	rm -f libgphobos2_main.a
+ 	rm -f libgphobos2_t.a
+ 
+ 
+diff --git a/libphobos/libdruntime/Makefile.am b/libphobos/libdruntime/Makefile.am
+index 157f21d..11510ce 100644
+--- a/libphobos/libdruntime/Makefile.am
++++ b/libphobos/libdruntime/Makefile.am
+@@ -116,7 +116,7 @@ RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
+ 		core/sys/windows/windows.o
+ 
+ # This should not be linked into a shared library.
+-CMAIN_OBJS= #rt/cmain.o
++CMAIN_OBJS= rt/dmain.o
+ 
+ D_GC_MODULES=@D_GC_MODULES@
+ 
+@@ -178,7 +178,7 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
+ ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
+ 
+ libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core/,$(CORE_IMPORTS))
+-	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
++	$(AR) -r $@ $(ALL_DRUNTIME_OBJS)
+ 	$(RANLIB) $@
+ 
+ #--------------------------------------#
+@@ -188,6 +188,8 @@ install-exec-local: libgdruntime.a
+ 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
+ 	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
+ 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
++	$(INSTALL) $(CMAIN_OBJS) $(DESTDIR)$(toolexeclibdir)
++
+ 
+ install-data-local: libgdruntime.a
+ 	for i in core; do \
+diff --git a/libphobos/libdruntime/Makefile.in b/libphobos/libdruntime/Makefile.in
+index 842ed4f..037391a 100644
+--- a/libphobos/libdruntime/Makefile.in
++++ b/libphobos/libdruntime/Makefile.in
+@@ -274,7 +274,7 @@ RT_WINDOWS_OBJS = core/sys/windows/dbghelp.o core/sys/windows/dll.o \
+ 
+ 
+ # This should not be linked into a shared library.
+-CMAIN_OBJS = #rt/cmain.o
++CMAIN_OBJS = rt/dmain.o
+ 
+ # Regardless of OS, all import headers are generated.
+ CORE_IMPORTS = core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
+@@ -592,7 +592,7 @@ gcc/cbridge_math.o: gcc/cbridge_math.c
+ 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fno-strict-aliasing -c $<
+ 
+ libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core/,$(CORE_IMPORTS))
+-	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
++	$(AR) -r $@ $(ALL_DRUNTIME_OBJS)
+ 	$(RANLIB) $@
+ 
+ #--------------------------------------#
+@@ -602,6 +602,8 @@ install-exec-local: libgdruntime.a
+ 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
+ 	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
+ 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
++	$(INSTALL) $(CMAIN_OBJS) $(DESTDIR)$(toolexeclibdir)
++ 
+ 
+ install-data-local: libgdruntime.a
+ 	for i in core; do \
+diff --git a/libphobos/libdruntime/rt/dmain2.d b/libphobos/libdruntime/rt/dmain2.d
+index 7c68b45..ba51413 100644
+--- a/libphobos/libdruntime/rt/dmain2.d
++++ b/libphobos/libdruntime/rt/dmain2.d
+@@ -389,10 +389,12 @@ alias extern(C) int function(char[][] args) MainFunc;
+  * main function and call the _d_run_main function
+  * themselves with any main function.
+  */
++/+ Handled by dmain.o
+ extern (C) int main(int argc, char **argv)
+ {
+     return _d_run_main(argc, argv, &_Dmain);
+ }
+++/
+ 
+ version (Solaris) extern (C) int _main(int argc, char** argv)
+ {

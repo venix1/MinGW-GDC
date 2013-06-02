@@ -1,0 +1,227 @@
+From 855e8c8c3b5c145ace0ff2f9e8545fecb0f32b3b Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Tue, 30 Apr 2013 12:28:14 -0500
+Subject: [PATCH] MinGW Fiber support
+
+---
+ libphobos/libdruntime/Makefile.am   |   3 +-
+ libphobos/libdruntime/Makefile.in   |   3 +-
+ libphobos/libdruntime/core/thread.d | 150 ++++++++++++++++++++++++++++++++++--
+ 3 files changed, 149 insertions(+), 7 deletions(-)
+
+diff --git a/libphobos/libdruntime/Makefile.am b/libphobos/libdruntime/Makefile.am
+index e433640..c80ff89 100644
+--- a/libphobos/libdruntime/Makefile.am
++++ b/libphobos/libdruntime/Makefile.am
+@@ -113,7 +113,8 @@ RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o \
+ 
+ RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
+ 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
+-		core/sys/windows/windows.o core/sys/windows/mingwex.o
++		core/sys/windows/windows.o core/sys/windows/mingwex.o \
++		core/thread_mingw.o
+ 
+ # This should not be linked into a shared library.
+ CMAIN_OBJS= #rt/cmain.o
+diff --git a/libphobos/libdruntime/Makefile.in b/libphobos/libdruntime/Makefile.in
+index 6d25245..6657140 100644
+--- a/libphobos/libdruntime/Makefile.in
++++ b/libphobos/libdruntime/Makefile.in
+@@ -270,7 +270,8 @@ RT_POSIX_OBJS = core/sys/posix/dirent.o core/sys/posix/netdb.o \
+ 
+ RT_WINDOWS_OBJS = core/sys/windows/dbghelp.o core/sys/windows/dll.o \
+ 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
+-		core/sys/windows/windows.o core/sys/windows/mingwex.o
++		core/sys/windows/windows.o core/sys/windows/mingwex.o \
++		core/thread_mingw.o
+ 
+ 
+ # This should not be linked into a shared library.
+diff --git a/libphobos/libdruntime/core/thread.d b/libphobos/libdruntime/core/thread.d
+index ba88300..bda7419 100644
+--- a/libphobos/libdruntime/core/thread.d
++++ b/libphobos/libdruntime/core/thread.d
+@@ -3172,6 +3172,21 @@ private
+             version = AlignFiberStackTo16Byte;
+         }
+     }
++    else version( GNU_InlineAsm )
++    {
++        version( MinGW64 )
++        {
++            version = GNU_AsmX86_64_Windows;
++            version = AlignFiberStackTo16Byte;
++			//version = AsmExternal;
++        }
++        else version( MinGW )
++        {
++            version = GNU_AsmX86_Windows;
++            version = AlignFiberStackTo16Byte;
++			//version = AsmExternal;
++        } 
++    }	
+     else version( PPC )
+     {
+         version( Posix )
+@@ -3273,7 +3288,6 @@ private
+         obj.switchOut();
+     }
+ 
+-
+   version( AsmExternal )
+     extern (C) void fiber_switchContext( void** oldp, void* newp );
+   else
+@@ -3425,10 +3439,100 @@ private
+                 jmp RCX;
+             }
+         }
+-        else version(MinGW)
++        else version( GNU_AsmX86_Windows )
+         {
+-            assert(0, "unimplemented");
++			// This requires function prologue to be generated.
++			// However, gcc -O2 will avoid this.  
++			// This makes this block unusuable.
++			//static assert(false, "fiber_switchContext should be AsmExternal");
++            asm 
++            {   "
++                // save current stack state
++                // Standard prologue.  
++                //push %%EBP;
++                //mov  %%ESP, %%EBP;
++                push %%EDI;
++                push %%ESI;
++                push %%EBX;
++                push %%FS:0;
++                push %%FS:4;
++                push %%FS:8;
++                push %%EAX;
++
++                // store oldp again with more accurate address
++                mov 8(%%EBP), %%EAX;
++                mov %%ESP, (%%EAX);
++                // load newp to begin context switch
++                mov 12(%%EBP), %%ESP;
++
++                // load saved state from new stack
++                pop %%EAX;
++                pop %%FS:8;
++                pop %%FS:4;
++                pop %%FS:0;
++                pop %%EBX;
++                pop %%ESI;
++                pop %%EDI;
++                pop %%EBP;
++
++                // 'return' to complete switch
++                ret;
++                "
++                : /* outputs */
++                : /* inputs */
++                : /* clobbers */
++                ;
++            }
+         }
++        else version( GNU_AsmX86_64_Windows )
++        {
++			// This requires function prologue to be generated.
++			// However, gcc -O2 will avoid this.  
++			// This makes this block unusuable.
++			static assert(false, "fiber_switchContext should be AsmExternal");
++            asm 
++            {   "
++                // save current stack state
++                // Standard prologue
++                //pushq %%RBP;
++                //movq  %%RSP, %%RBP;
++                pushq %%RBX;
++                pushq %%R12;
++                pushq %%R13;
++                pushq %%R14;
++                pushq %%R15;
++                pushq %%GS:0;
++                pushq %%GS:8;
++                pushq %%GS:16;
++
++                // store oldp
++                movq %%RSP, (%%RCX);
++                // load newp to begin context switch
++                movq %%RDX, %%RSP;
++
++                // load saved state from new stack
++                popq %%GS:16;
++                popq %%GS:8;
++                popq %%GS:0;
++                popq %%R15;
++                popq %%R14;
++                popq %%R13;
++                popq %%R12;
++                popq %%RBX;
++                popq %%RBP;
++
++                // 'return' to complete switch
++                popq %%RCX;
++                jmp *%%RCX;
++                "
++                : /* outputs */
++                : /* inputs */
++                : /* clobbers */ 
++                ;
++            }
++
++//            assert(false, "x86-64 stub");
++        }	
+         else static if( __traits( compiles, ucontext_t ) )
+         {
+             Fiber   cfib = Fiber.getThis();
+@@ -4256,9 +4360,45 @@ private:
+             pstack -= ABOVE;
+             *cast(size_t*)(pstack - SZ_RA) = cast(size_t)&fiber_entryPoint;
+         }
+-        else version(MinGW)
++        else version( GNU_AsmX86_Windows )
++        {
++            version( StackGrowsDown ) {} else static assert( false );
++
++            // Currently, MinGW doesn't utilize SEH exceptions.
++            // See DMD AsmX86_Windows If this code ever becomes fails and SEH is used.
++
++            push( 0x00000000 );                                     // Return address of fiber_entryPoint call
++            push( cast(size_t) &fiber_entryPoint );                 // EIP
++            push( 0x00000000 );                                     // EBP
++            push( 0x00000000 );                                     // EDI
++            push( 0x00000000 );                                     // ESI
++            push( 0x00000000 );                                     // EBX
++            push( 0xFFFFFFFF );                                     // FS:[0] - Current SEH frame
++            push( cast(size_t) m_ctxt.bstack );                     // FS:[4] - Top of stack
++            push( cast(size_t) m_ctxt.bstack - m_size );            // FS:[8] - Bottom of stack
++            push( 0x00000000 );                                     // EAX
++        }
++        else version( GNU_AsmX86_64_Windows )
+         {
+-            assert(0, "unimplemented");
++            push( 0x00000000_00000000 );                            // Return address of fiber_entryPoint call
++            push( cast(size_t) &fiber_entryPoint );                 // RIP
++            push( 0x00000000_00000000 );                            // RBP
++            push( 0x00000000_00000000 );                            // RBX
++            push( 0x00000000_00000000 );                            // R12
++            push( 0x00000000_00000000 );                            // R13
++            push( 0x00000000_00000000 );                            // R14
++            push( 0x00000000_00000000 );                            // R15
++            push( 0xFFFFFFFF_FFFFFFFF );                            // GS:[0] - Current SEH frame
++            version( StackGrowsDown )
++            {
++                push( cast(size_t) m_ctxt.bstack );                 // GS:[8]  - Top of stack
++                push( cast(size_t) m_ctxt.bstack - m_size );        // GS:[16] - Bottom of stack
++            }
++            else
++            {
++                push( cast(size_t) m_ctxt.bstack );                 // GS:[8]  - Top of stack
++                push( cast(size_t) m_ctxt.bstack + m_size );        // GS:[16] - Bottom of stack
++            }
+         }
+         else static if( __traits( compiles, ucontext_t ) )
+         {
+-- 
+1.8.1.msysgit.1
+
