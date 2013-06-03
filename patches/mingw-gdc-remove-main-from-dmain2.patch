@@ -1,3 +1,19 @@
+From 6eb246a9837be8ef5d3ab9b832546ddab1e32163 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Mon, 3 Jun 2013 11:21:37 -0500
+Subject: [PATCH] Remove main entry point from dmain2.o
+
+---
+ gcc/d/d-spec.c                    | 35 +++++++++++++++++++++++++++++++++++
+ gcc/d/lang.opt                    |  5 ++++-
+ libphobos/Makefile.am             |  1 +
+ libphobos/libdruntime/Makefile.am |  6 ++++--
+ libphobos/libdruntime/Makefile.in |  6 ++++--
+ libphobos/libdruntime/rt/dmain.d  | 11 +++++++++++
+ libphobos/libdruntime/rt/dmain2.d |  2 ++
+ 7 files changed, 61 insertions(+), 5 deletions(-)
+ create mode 100644 libphobos/libdruntime/rt/dmain.d
+
 diff --git a/gcc/d/d-spec.c b/gcc/d/d-spec.c
 index 1d03b97..233bc11 100644
 --- a/gcc/d/d-spec.c
@@ -166,6 +182,23 @@ index 842ed4f..037391a 100644
  
  install-data-local: libgdruntime.a
  	for i in core; do \
+diff --git a/libphobos/libdruntime/rt/dmain.d b/libphobos/libdruntime/rt/dmain.d
+new file mode 100644
+index 0000000..83439fa
+--- /dev/null
++++ b/libphobos/libdruntime/rt/dmain.d
+@@ -0,0 +1,11 @@
++private extern (C) int _d_run_main(int argc, char **argv, void* main);
++
++/***********************************
++ * The D main() function supplied by the user's program
++ */
++int main();
++
++extern (C) int main(int argc, char **argv)
++{
++    return _d_run_main(argc, argv, &main);
++}
 diff --git a/libphobos/libdruntime/rt/dmain2.d b/libphobos/libdruntime/rt/dmain2.d
 index 7c68b45..ba51413 100644
 --- a/libphobos/libdruntime/rt/dmain2.d
@@ -183,3 +216,6 @@ index 7c68b45..ba51413 100644
  
  version (Solaris) extern (C) int _main(int argc, char** argv)
  {
+-- 
+1.8.1.msysgit.1
+

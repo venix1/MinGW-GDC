@@ -244,7 +244,7 @@ function build_gdc {
 	else
 		cd gcc-4.8.0
 		git reset --hard
-		git clean -f	
+		git clean -f -d	
 		cd ..
 	fi
 	# Clone and configure GDC
@@ -260,7 +260,7 @@ function build_gdc {
 	
 	pushd GDC
 	patch -p1 < $root/patches/mingw-gdc.patch
-	patch -p1 < $root/patches/no_dmain.patch
+	patch -p1 < $root/patches/mingw-gdc-remove-main-from-dmain2.patch
 	./setup-gcc.sh ../gcc-4.8.0
 	popd
 
