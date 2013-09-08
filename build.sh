@@ -252,15 +252,20 @@ function build_gdc {
 		git clone https://github.com/D-Programming-GDC/GDC.git -b gdc-4.8
 	else
 		cd GDC
-		git reset --hard
-		git clean -f
-		git pull
+		branch=$(git branch | cut -c3-)
+		git fetch 
+		git reset --hard origin/$branch
+		git clean -f -d
 		cd ..
 	fi
 	
 	pushd GDC
-	patch -p1 < $root/patches/mingw-gdc.patch
-	patch -p1 < $root/patches/mingw-gdc-remove-main-from-dmain2.patch
+	#patch -p1 < $root/patches/mingw-gdc.patch
+	#patch -p1 < $root/patches/mingw-gdc-remove-main-from-dmain2.patch
+	for patch in $(find $root/patches/gdc -type f ); do
+		echo "Patching $patch"
+		git am $patch || exit
+	done
 	./setup-gcc.sh ../gcc-4.8.0
 	popd
 

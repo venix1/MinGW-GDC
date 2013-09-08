@@ -1,0 +1,331 @@
+From def1f9be49fce9cb02ec47df63bc4c3fd4875881 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Fri, 21 Jun 2013 17:27:36 -0500
+Subject: [PATCH 03/16] MinGW TLS Support
+
+---
+ gcc/d/d-objfile.cc                                |   5 +-
+ libphobos/libdruntime/Makefile.am                 |   3 +-
+ libphobos/libdruntime/Makefile.in                 |   3 +-
+ libphobos/libdruntime/core/sys/windows/dll.d      |  12 +-
+ libphobos/libdruntime/core/sys/windows/mingwasm.S |  35 +++++
+ libphobos/libdruntime/core/thread.d               | 163 +++++++++++++++++++++-
+ 6 files changed, 212 insertions(+), 9 deletions(-)
+ create mode 100644 libphobos/libdruntime/core/sys/windows/mingwasm.S
+
+diff --git a/gcc/d/d-objfile.cc b/gcc/d/d-objfile.cc
+index ec68682..d9d76c4 100644
+--- a/gcc/d/d-objfile.cc
++++ b/gcc/d/d-objfile.cc
+@@ -1657,7 +1657,10 @@ d_finish_function (FuncDeclaration *f)
+   gcc_assert (TREE_CODE (t) == FUNCTION_DECL);
+ 
+   // Write out _tlsstart/_tlsend.
+-  if (f->isMain() || f->isWinMain() || f->isDllMain())
++  // For MinGW we alias _tls_start and _tls_end.  Otherwise we have an offset
++  // that could result in memory corruption.  As well as alignment issues for
++  // the GC.
++  if (f->isMain() || f->isWinMain() || f->isDllMain() && !TARGET_WINDOS)
+     build_tlssections();
+ 
+   if (s->prettyIdent)
+diff --git a/libphobos/libdruntime/Makefile.am b/libphobos/libdruntime/Makefile.am
+index bfc8b0d..7f2da74 100644
+--- a/libphobos/libdruntime/Makefile.am
++++ b/libphobos/libdruntime/Makefile.am
+@@ -116,7 +116,8 @@ RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o \
+ 
+ RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
+ 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
+-		core/sys/windows/windows.o core/sys/windows/mingwex.o
++		core/sys/windows/windows.o core/sys/windows/mingwex.o \
++		core/sys/windows/mingwasm.o
+ 
+ # This should not be linked into a shared library.
+ CMAIN_OBJS= rt/dmain.o
+diff --git a/libphobos/libdruntime/Makefile.in b/libphobos/libdruntime/Makefile.in
+index 2078b61..41a2c1c 100644
+--- a/libphobos/libdruntime/Makefile.in
++++ b/libphobos/libdruntime/Makefile.in
+@@ -274,7 +274,8 @@ RT_POSIX_OBJS = core/sys/posix/dirent.o core/sys/posix/netdb.o \
+ 
+ RT_WINDOWS_OBJS = core/sys/windows/dbghelp.o core/sys/windows/dll.o \
+ 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
+-		core/sys/windows/windows.o core/sys/windows/mingwex.o
++		core/sys/windows/windows.o core/sys/windows/mingwex.o \
++		core/sys/windows/mingwasm.o
+ 
+ 
+ # This should not be linked into a shared library.
+diff --git a/libphobos/libdruntime/core/sys/windows/dll.d b/libphobos/libdruntime/core/sys/windows/dll.d
+index 1a6e2bf..b608bb4 100644
+--- a/libphobos/libdruntime/core/sys/windows/dll.d
++++ b/libphobos/libdruntime/core/sys/windows/dll.d
+@@ -24,7 +24,17 @@ version( Windows )
+ 
+     extern (C)
+     {
+-        version (Win32)
++		version (MinGW)
++		{
++			extern __gshared void* _tls_start;
++			extern __gshared void* _tls_end;
++            extern __gshared void* __xl_a;
++
++            alias _tls_start _tlsstart;
++            alias _tls_end   _tlsend;
++            alias __xl_a     _tls_callbacks_a;		
++		}
++        else version (Win32)
+         {
+             extern __gshared void* _tlsstart;
+             extern __gshared void* _tlsend;
+diff --git a/libphobos/libdruntime/core/sys/windows/mingwasm.S b/libphobos/libdruntime/core/sys/windows/mingwasm.S
+new file mode 100644
+index 0000000..49b5918
+--- /dev/null
++++ b/libphobos/libdruntime/core/sys/windows/mingwasm.S
+@@ -0,0 +1,35 @@
++/**
++ * Support code for MinGW fibers.
++ */
++ 	.global	_fiber_switchContext
++_fiber_switchContext:
++	// Save current stack state.save current stack state
++	// Standard CDECL prologue.  
++	push %EBP;
++	mov  %ESP, %EBP;
++	push %EDI;
++    push %ESI;
++    push %EBX;
++    push %FS:0;
++    push %FS:4;
++    push %FS:8;
++    push %EAX;
++
++    // store oldp again with more accurate address
++    mov 8(%EBP), %EAX;
++    mov %ESP, (%EAX);
++    // load newp to begin context switch
++    mov 12(%EBP), %ESP;
++
++    // load saved state from new stack
++    pop %EAX;
++    pop %FS:8;
++    pop %FS:4;
++    pop %FS:0;
++    pop %EBX;
++    pop %ESI;
++    pop %EDI;
++    pop %EBP;
++
++    // 'return' to complete switch
++    ret;
+diff --git a/libphobos/libdruntime/core/thread.d b/libphobos/libdruntime/core/thread.d
+index ba88300..f9507c7 100644
+--- a/libphobos/libdruntime/core/thread.d
++++ b/libphobos/libdruntime/core/thread.d
+@@ -315,6 +315,20 @@ else version( Posix )
+                 alias _tlsstart _tlsend;
+             }
+         }
++        else version( MinGW)
++        {
++            // NOTE: The memory between the addresses of _tls_start and _tls_end
++            //       is the storage for thread-local data in MinGW.  Both of
++            //       these are defined in tlssup.c.
++            extern (C)
++            {
++                extern int _tls_start;
++                extern int _tls_end;
++            }
++            
++            alias _tls_start _tlsstart;
++            alias _tls_end _tlsend;
++        }
+         else version( GNU )
+         {
+             extern (C)
+@@ -3172,6 +3186,21 @@ private
+             version = AlignFiberStackTo16Byte;
+         }
+     }
++    else version( GNU_InlineAsm )
++    {
++        version( MinGW64 )
++        {
++            version = GNU_AsmX86_64_Windows;
++            version = AlignFiberStackTo16Byte;
++			version = AsmExternal;
++        }
++        else version( MinGW )
++        {
++            version = GNU_AsmX86_Windows;
++            version = AlignFiberStackTo16Byte;
++			version = AsmExternal;
++        } 
++    }	
+     else version( PPC )
+     {
+         version( Posix )
+@@ -3273,7 +3302,6 @@ private
+         obj.switchOut();
+     }
+ 
+-
+   version( AsmExternal )
+     extern (C) void fiber_switchContext( void** oldp, void* newp );
+   else
+@@ -3425,10 +3453,99 @@ private
+                 jmp RCX;
+             }
+         }
+-        else version(MinGW)
++        else version( GNU_AsmX86_Windows )
+         {
+-            assert(0, "unimplemented");
++			// This requires function prologue to be generated.
++			// However, gcc -O2 will avoid this making this unusable here.
++			static assert(false, "fiber_switchContext should be AsmExternal");
++            asm 
++            {   "
++                // save current stack state
++                // Standard prologue.  
++                //push %%EBP;
++                //mov  %%ESP, %%EBP;
++                push %%EDI;
++                push %%ESI;
++                push %%EBX;
++                push %%FS:0;
++                push %%FS:4;
++                push %%FS:8;
++                push %%EAX;
++
++                // store oldp again with more accurate address
++                mov 8(%%EBP), %%EAX;
++                mov %%ESP, (%%EAX);
++                // load newp to begin context switch
++                mov 12(%%EBP), %%ESP;
++
++                // load saved state from new stack
++                pop %%EAX;
++                pop %%FS:8;
++                pop %%FS:4;
++                pop %%FS:0;
++                pop %%EBX;
++                pop %%ESI;
++                pop %%EDI;
++                pop %%EBP;
++
++                // 'return' to complete switch
++                ret;
++                "
++                : /* outputs */
++                : /* inputs */
++                : /* clobbers */
++                ;
++            }
+         }
++        else version( GNU_AsmX86_64_Windows )
++        {
++			// This requires function prologue to be generated.
++			// However, gcc -O2 will avoid this making this unusable
++			// This makes this block unusuable.
++			static assert(false, "fiber_switchContext should be AsmExternal");
++            asm 
++            {   "
++                // save current stack state
++                // Standard prologue
++                //pushq %%RBP;
++                //movq  %%RSP, %%RBP;
++                pushq %%RBX;
++                pushq %%R12;
++                pushq %%R13;
++                pushq %%R14;
++                pushq %%R15;
++                pushq %%GS:0;
++                pushq %%GS:8;
++                pushq %%GS:16;
++
++                // store oldp
++                movq %%RSP, (%%RCX);
++                // load newp to begin context switch
++                movq %%RDX, %%RSP;
++
++                // load saved state from new stack
++                popq %%GS:16;
++                popq %%GS:8;
++                popq %%GS:0;
++                popq %%R15;
++                popq %%R14;
++                popq %%R13;
++                popq %%R12;
++                popq %%RBX;
++                popq %%RBP;
++
++                // 'return' to complete switch
++                popq %%RCX;
++                jmp *%%RCX;
++                "
++                : /* outputs */
++                : /* inputs */
++                : /* clobbers */ 
++                ;
++            }
++
++//            assert(false, "x86-64 stub");
++        }	
+         else static if( __traits( compiles, ucontext_t ) )
+         {
+             Fiber   cfib = Fiber.getThis();
+@@ -4256,9 +4373,45 @@ private:
+             pstack -= ABOVE;
+             *cast(size_t*)(pstack - SZ_RA) = cast(size_t)&fiber_entryPoint;
+         }
+-        else version(MinGW)
++        else version( GNU_AsmX86_Windows )
+         {
+-            assert(0, "unimplemented");
++            version( StackGrowsDown ) {} else static assert( false );
++
++            // Currently, MinGW doesn't utilize SEH exceptions.
++            // See DMD AsmX86_Windows If this code ever becomes fails and SEH is used.
++
++            push( 0x00000000 );                                     // Return address of fiber_entryPoint call
++            push( cast(size_t) &fiber_entryPoint );                 // EIP
++            push( 0x00000000 );                                     // EBP
++            push( 0x00000000 );                                     // EDI
++            push( 0x00000000 );                                     // ESI
++            push( 0x00000000 );                                     // EBX
++            push( 0xFFFFFFFF );                                     // FS:[0] - Current SEH frame
++            push( cast(size_t) m_ctxt.bstack );                     // FS:[4] - Top of stack
++            push( cast(size_t) m_ctxt.bstack - m_size );            // FS:[8] - Bottom of stack
++            push( 0x00000000 );                                     // EAX
++        }
++        else version( GNU_AsmX86_64_Windows )
++        {
++            push( 0x00000000_00000000 );                            // Return address of fiber_entryPoint call
++            push( cast(size_t) &fiber_entryPoint );                 // RIP
++            push( 0x00000000_00000000 );                            // RBP
++            push( 0x00000000_00000000 );                            // RBX
++            push( 0x00000000_00000000 );                            // R12
++            push( 0x00000000_00000000 );                            // R13
++            push( 0x00000000_00000000 );                            // R14
++            push( 0x00000000_00000000 );                            // R15
++            push( 0xFFFFFFFF_FFFFFFFF );                            // GS:[0] - Current SEH frame
++            version( StackGrowsDown )
++            {
++                push( cast(size_t) m_ctxt.bstack );                 // GS:[8]  - Top of stack
++                push( cast(size_t) m_ctxt.bstack - m_size );        // GS:[16] - Bottom of stack
++            }
++            else
++            {
++                push( cast(size_t) m_ctxt.bstack );                 // GS:[8]  - Top of stack
++                push( cast(size_t) m_ctxt.bstack + m_size );        // GS:[16] - Bottom of stack
++            }
+         }
+         else static if( __traits( compiles, ucontext_t ) )
+         {
+-- 
+1.8.1.msysgit.1
+

@@ -1,0 +1,77 @@
+From 9b17f734e15753169c4248a102a5444564bc4575 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Sat, 22 Jun 2013 07:12:32 -0500
+Subject: [PATCH 12/16] Phobos COM requires libuuid
+
+---
+ gcc/d/d-spec.c | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/gcc/d/d-spec.c b/gcc/d/d-spec.c
+index 1298086..6f7c82d 100644
+--- a/gcc/d/d-spec.c
++++ b/gcc/d/d-spec.c
+@@ -42,6 +42,8 @@
+ #define SKIPOPT		(1<<8)
+ /* This bit is set if they did `-lws2_32'.  */
+ #define WITHLIBWS2_32      (1<<9)
++/* This bit is set if they did `-luuid'.  */
++#define WITHLIBUUID     (1<<10)
+ 
+ #ifndef MATH_LIBRARY
+ #define MATH_LIBRARY "m"
+@@ -125,6 +127,9 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+   
+   /* "-lws2_32" if it appears on the command line.  */
+   const struct cl_decoded_option *saw_libws2_32 = 0;  
++  
++  /* "-luuid" if it appears on the command line.  */
++  const struct cl_decoded_option *saw_libuuid = 0;    
+ 
+   /* "-lc" if it appears on the command line.  */
+   const struct cl_decoded_option *saw_libc = 0;
+@@ -244,6 +249,8 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 	    args[i] |= WITHLIBC;
+       else if (strcmp (arg, "ws2_32") == 0)
+         args[i] |= WITHLIBWS2_32;		
++      else if (strcmp (arg, "uuid") == 0)
++        args[i] |= WITHLIBUUID;		
+ 	  else
+ 	    /* Unrecognized libraries (e.g. -ltango) may require libphobos.  */
+ 	    library = (library == 0) ? 1 : library;
+@@ -412,6 +419,12 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+       --j;
+       saw_libws2_32 = &decoded_options[i];
+     }	
++	
++      if (!saw_libuuid && (args[i] & WITHLIBUUID) && library > 0)
++    {
++      --j;
++      saw_libuuid = &decoded_options[i];
++    }	
+ 
+       if (args[i] & D_SOURCE_FILE)
+ 	{
+@@ -508,6 +521,19 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+     }
+ #endif
+ 
++      if (saw_libuuid)
++    new_decoded_options[j++] = *saw_libuuid;
++#if TARGET_WINDOWS
++    /* Phobos COM depend on libuuid.a */
++      else if (saw_libuuid && library > 0)
++    {
++      generate_option (OPT_l, "uuid", 1, CL_DRIVER,
++                       &new_decoded_options[j]);
++      added_libraries++;
++      j++;        
++    }
++#endif
++
+ #if USE_PTHREADS
+       /* When linking libphobos statically we also need to link with the
+ 	 pthread library.  */
+-- 
+1.8.1.msysgit.1
+

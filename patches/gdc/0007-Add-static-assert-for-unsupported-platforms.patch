@@ -1,0 +1,93 @@
+From 39dd017a9e65ea0022e9097ebf4ae1602489582c Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Fri, 21 Jun 2013 17:35:10 -0500
+Subject: [PATCH 07/16] Add static assert for unsupported platforms
+
+---
+ libphobos/libdruntime/core/sync/condition.d | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
+
+diff --git a/libphobos/libdruntime/core/sync/condition.d b/libphobos/libdruntime/core/sync/condition.d
+index bb96989..8666427 100644
+--- a/libphobos/libdruntime/core/sync/condition.d
++++ b/libphobos/libdruntime/core/sync/condition.d
+@@ -93,6 +93,10 @@ class Condition
+             if( rc )
+                 throw new SyncException( "Unable to initialize condition" );
+         }
++        else
++        {
++            static assert(false, "Platform not supported");
++        }		
+     }
+ 
+ 
+@@ -111,6 +115,10 @@ class Condition
+             int rc = pthread_cond_destroy( &m_hndl );
+             assert( !rc, "Unable to destroy condition" );
+         }
++        else
++        {
++            static assert(false, "Platform not supported");
++        }				
+     }
+ 
+ 
+@@ -154,6 +162,10 @@ class Condition
+             if( rc )
+                 throw new SyncException( "Unable to wait for condition" );
+         }
++        else
++        {
++            static assert(false, "Platform not supported");
++        }				
+     }
+ 
+ 
+@@ -207,6 +219,10 @@ class Condition
+                 return false;
+             throw new SyncException( "Unable to wait for condition" );
+         }
++        else
++        {
++            static assert(false, "Platform not supported");
++        }				
+     }
+ 
+ 
+@@ -228,6 +244,10 @@ class Condition
+             if( rc )
+                 throw new SyncException( "Unable to notify condition" );
+         }
++        else
++        {
++            static assert(false, "Platform not supported");
++        }				
+     }
+ 
+ 
+@@ -249,6 +269,10 @@ class Condition
+             if( rc )
+                 throw new SyncException( "Unable to notify condition" );
+         }
++        else
++        {
++            static assert(false, "Platform not supported");
++        }				
+     }
+ 
+ 
+@@ -421,6 +445,10 @@ private:
+         Mutex               m_assocMutex;
+         pthread_cond_t      m_hndl;
+     }
++    else
++    {
++		static assert(false, "Platform not supported");
++    }		
+ }
+ 
+ 
+-- 
+1.8.1.msysgit.1
+

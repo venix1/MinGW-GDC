@@ -1,0 +1,29 @@
+From 4ddfe5b85c447e6fbbf625ca6d09dbad084daf70 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Sat, 22 Jun 2013 06:45:37 -0500
+Subject: [PATCH 08/16] Possible 64-bit issue detectoin
+
+---
+ gcc/d/d-builtins.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/gcc/d/d-builtins.c b/gcc/d/d-builtins.c
+index 9c8a939..36fbd29 100644
+--- a/gcc/d/d-builtins.c
++++ b/gcc/d/d-builtins.c
+@@ -768,10 +768,12 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
+ 
+     case BUILTINbsf:
+       callee = builtin_decl_explicit (BUILT_IN_CTZL);
++	  gcc_assert (callee);
+       break;
+ 
+     case BUILTINbsr:
+       callee = builtin_decl_explicit (BUILT_IN_CLZL);
++	  gcc_assert (callee);
+       break;
+ 
+     case BUILTINbswap:
+-- 
+1.8.1.msysgit.1
+

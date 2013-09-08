@@ -1,0 +1,101 @@
+From 7f0f76e5cf232dbd7c1e554ec04a0f0b9ac8f942 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Sat, 22 Jun 2013 06:45:55 -0500
+Subject: [PATCH 09/16] Add WinSock2 dependency to phobos
+
+---
+ gcc/d/d-spec.c | 36 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
+
+diff --git a/gcc/d/d-spec.c b/gcc/d/d-spec.c
+index a5212d4..1298086 100644
+--- a/gcc/d/d-spec.c
++++ b/gcc/d/d-spec.c
+@@ -40,6 +40,8 @@
+ #define D_SOURCE_FILE	(1<<7)
+ /* This bit is set when the argument should not be passed to gcc or the backend */
+ #define SKIPOPT		(1<<8)
++/* This bit is set if they did `-lws2_32'.  */
++#define WITHLIBWS2_32      (1<<9)
+ 
+ #ifndef MATH_LIBRARY
+ #define MATH_LIBRARY "m"
+@@ -69,6 +71,13 @@
+ #define USE_PTHREADS	1
+ #endif
+ 
++/* mingw phobos has a dependency on -lws2_32 */
++#if TARGET_WINDOS
++#define NEED_WINSOCK2 1
++#else
++#define NEED_WINSOCK2 0
++#endif
++
+ void
+ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 		      unsigned int *in_decoded_options_count,
+@@ -113,6 +122,9 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 
+   /* "-lrt" if it appears on the command line.  */
+   const struct cl_decoded_option *saw_librt = 0;
++  
++  /* "-lws2_32" if it appears on the command line.  */
++  const struct cl_decoded_option *saw_libws2_32 = 0;  
+ 
+   /* "-lc" if it appears on the command line.  */
+   const struct cl_decoded_option *saw_libc = 0;
+@@ -230,6 +242,8 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 	    args[i] |= TIMERLIB;
+ 	  else if (strcmp (arg, "c") == 0)
+ 	    args[i] |= WITHLIBC;
++      else if (strcmp (arg, "ws2_32") == 0)
++        args[i] |= WITHLIBWS2_32;		
+ 	  else
+ 	    /* Unrecognized libraries (e.g. -ltango) may require libphobos.  */
+ 	    library = (library == 0) ? 1 : library;
+@@ -392,6 +406,12 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 	  --j;
+ 	  saw_libc = &decoded_options[i];
+ 	}
++	
++      if (!saw_libws2_32 && (args[i] & WITHLIBWS2_32) && library > 0)
++    {
++      --j;
++      saw_libws2_32 = &decoded_options[i];
++    }	
+ 
+       if (args[i] & D_SOURCE_FILE)
+ 	{
+@@ -475,6 +495,19 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 	}
+ #endif
+ 
++      if (saw_libws2_32)
++    new_decoded_options[j++] = *saw_libws2_32;
++#if NEED_WINSOCK2
++    /* Phobos has a dependency on -lws2_32 */
++      else
++    {
++      generate_option (OPT_l, "ws2_32", 1, CL_DRIVER,
++	                   &new_decoded_options[j]);
++      added_libraries++;
++      j++;
++    }
++#endif
++
+ #if USE_PTHREADS
+       /* When linking libphobos statically we also need to link with the
+ 	 pthread library.  */
+@@ -533,6 +566,9 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 
+   if (saw_libc)
+     new_decoded_options[j++] = *saw_libc;
++  
++  if (saw_libws2_32)
++    new_decoded_options[j++] = *saw_libws2_32;
+ 
+   if (shared_libgcc && !static_link)
+     {
+-- 
+1.8.1.msysgit.1
+

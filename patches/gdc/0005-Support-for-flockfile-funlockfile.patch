@@ -1,0 +1,71 @@
+From 3f7abb56ff06a74a225547aef2371f52e799989b Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Fri, 21 Jun 2013 17:28:59 -0500
+Subject: [PATCH 05/16] Support for flockfile & funlockfile
+
+---
+ libphobos/src/std/stdio.d | 48 +++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 44 insertions(+), 4 deletions(-)
+
+diff --git a/libphobos/src/std/stdio.d b/libphobos/src/std/stdio.d
+index 7fbc61e..e57f383 100644
+--- a/libphobos/src/std/stdio.d
++++ b/libphobos/src/std/stdio.d
+@@ -120,10 +120,50 @@ else version (MINGW_IO)
+         int setmode(int, int);
+     }
+ 
+-    void flockfile(FILE* fp) { }
+-
+-    void funlockfile(FILE* fp) { }
+-
++    import core.sync.mutex;
++    
++    __gshared Mutex lockMutex;
++    __gshared Mutex[uint] fileLocks;
++    
++    void flockfile(FILE* fp)
++    {
++        Mutex mutex;
++        
++        if (lockMutex is null)
++             lockMutex = new Mutex;
++             
++        lockMutex.lock();
++        
++        if (fp._file in fileLocks)
++        {
++            mutex = fileLocks[fp._file];
++        } else 
++        {
++            mutex = new Mutex();
++            fileLocks[fp._file] = mutex;
++        }
++        mutex.lock();
++        
++        lockMutex.unlock();
++    }
++
++    void funlockfile(FILE* fp)
++    {
++        Mutex mutex;
++
++        if (lockMutex is null)
++             lockMutex = new Mutex;
++        lockMutex.lock();
++        
++        if (fp._file in fileLocks)
++        {
++            mutex = fileLocks[fp._file];
++            mutex.unlock();
++        } 
++		else { /* Should this be an error */ }
++        lockMutex.unlock();
++    }
++   
+     int fputc_unlocked(int c, _iobuf* fp) { return fputc(c, cast(shared) fp); }
+     int fputwc_unlocked(int c, _iobuf* fp)
+     {
+-- 
+1.8.1.msysgit.1
+

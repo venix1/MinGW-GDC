@@ -1,0 +1,30 @@
+From 844ef19ad672f72f21429541492831a3ec462fdc Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Fri, 21 Jun 2013 17:28:06 -0500
+Subject: [PATCH 04/16] Separate dmain from libgphobos
+
+---
+ libphobos/libdruntime/rt/dmain.d | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+ create mode 100644 libphobos/libdruntime/rt/dmain.d
+
+diff --git a/libphobos/libdruntime/rt/dmain.d b/libphobos/libdruntime/rt/dmain.d
+new file mode 100644
+index 0000000..83439fa
+--- /dev/null
++++ b/libphobos/libdruntime/rt/dmain.d
+@@ -0,0 +1,11 @@
++private extern (C) int _d_run_main(int argc, char **argv, void* main);
++
++/***********************************
++ * The D main() function supplied by the user's program
++ */
++int main();
++
++extern (C) int main(int argc, char **argv)
++{
++    return _d_run_main(argc, argv, &main);
++}
+-- 
+1.8.1.msysgit.1
+

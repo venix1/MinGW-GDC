@@ -1,21 +1,19 @@
-From 6eb246a9837be8ef5d3ab9b832546ddab1e32163 Mon Sep 17 00:00:00 2001
+From 743aaa9f298f45a18b1e4a4ac8b6ceddaa533d27 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
-Date: Mon, 3 Jun 2013 11:21:37 -0500
-Subject: [PATCH] Remove main entry point from dmain2.o
+Date: Sat, 15 Jun 2013 09:17:28 -0500
+Subject: [PATCH 02/16] Separate main from libgphobos. Required for WinMain/Dll
+ linkage
 
 ---
  gcc/d/d-spec.c                    | 35 +++++++++++++++++++++++++++++++++++
  gcc/d/lang.opt                    |  5 ++++-
- libphobos/Makefile.am             |  1 +
- libphobos/libdruntime/Makefile.am |  6 ++++--
- libphobos/libdruntime/Makefile.in |  6 ++++--
- libphobos/libdruntime/rt/dmain.d  | 11 +++++++++++
+ libphobos/libdruntime/Makefile.am |  8 +++++---
+ libphobos/libdruntime/Makefile.in | 12 +++++++-----
  libphobos/libdruntime/rt/dmain2.d |  2 ++
- 7 files changed, 61 insertions(+), 5 deletions(-)
- create mode 100644 libphobos/libdruntime/rt/dmain.d
+ 5 files changed, 53 insertions(+), 9 deletions(-)
 
 diff --git a/gcc/d/d-spec.c b/gcc/d/d-spec.c
-index 1d03b97..233bc11 100644
+index 1d03b97..a5212d4 100644
 --- a/gcc/d/d-spec.c
 +++ b/gcc/d/d-spec.c
 @@ -55,6 +55,13 @@
@@ -89,10 +87,10 @@ index 1d03b97..233bc11 100644
  
        generate_option (OPT_l, saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS, 1,
 diff --git a/gcc/d/lang.opt b/gcc/d/lang.opt
-index 3962865..fcab36a 100644
+index ac0c2cd..1c10035 100644
 --- a/gcc/d/lang.opt
 +++ b/gcc/d/lang.opt
-@@ -186,6 +186,10 @@ static-libphobos
+@@ -188,6 +188,10 @@ static-libphobos
  Driver
  Link the standard D library statically in the compilation
  
@@ -103,29 +101,17 @@ index 3962865..fcab36a 100644
  Wall
  D
  ; Documented in c.opt
-@@ -205,4 +209,3 @@ D
+@@ -207,4 +211,3 @@ D
  Wunknown-pragmas
  D
  ; Documented in c.opt
 -
-diff --git a/libphobos/Makefile.am b/libphobos/Makefile.am
-index c3c3c8c..8fd8c6d 100644
---- a/libphobos/Makefile.am
-+++ b/libphobos/Makefile.am
-@@ -159,6 +159,7 @@ clean-local:
- 	rm -f unittest.o
- 	rm -f unittest$(EXEEXT)
- 	rm -f libgphobos2.a
-+	rm -f libgphobos2_main.a
- 	rm -f libgphobos2_t.a
- 
- 
 diff --git a/libphobos/libdruntime/Makefile.am b/libphobos/libdruntime/Makefile.am
-index 157f21d..11510ce 100644
+index 4b61373..bfc8b0d 100644
 --- a/libphobos/libdruntime/Makefile.am
 +++ b/libphobos/libdruntime/Makefile.am
-@@ -116,7 +116,7 @@ RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
- 		core/sys/windows/windows.o
+@@ -119,7 +119,7 @@ RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
+ 		core/sys/windows/windows.o core/sys/windows/mingwex.o
  
  # This should not be linked into a shared library.
 -CMAIN_OBJS= #rt/cmain.o
@@ -133,16 +119,19 @@ index 157f21d..11510ce 100644
  
  D_GC_MODULES=@D_GC_MODULES@
  
-@@ -178,7 +178,7 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
- ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
- 
- libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core/,$(CORE_IMPORTS))
--	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
-+	$(AR) -r $@ $(ALL_DRUNTIME_OBJS)
+@@ -194,9 +194,9 @@ endif
+ libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+ if BACKTRACE_SUPPORTED
+ 	cp -f $(LIBBACKTRACE_LIB) $@
+-	$(AR) -q $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
++	$(AR) -q $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) 
+ else
+-	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
++	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) 
+ endif
  	$(RANLIB) $@
  
- #--------------------------------------#
-@@ -188,6 +188,8 @@ install-exec-local: libgdruntime.a
+@@ -210,6 +210,8 @@ install-exec-local: libgdruntime.a
  	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
  	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
  	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
@@ -152,10 +141,10 @@ index 157f21d..11510ce 100644
  install-data-local: libgdruntime.a
  	for i in core; do \
 diff --git a/libphobos/libdruntime/Makefile.in b/libphobos/libdruntime/Makefile.in
-index 842ed4f..037391a 100644
+index b80fcf3..2078b61 100644
 --- a/libphobos/libdruntime/Makefile.in
 +++ b/libphobos/libdruntime/Makefile.in
-@@ -274,7 +274,7 @@ RT_WINDOWS_OBJS = core/sys/windows/dbghelp.o core/sys/windows/dll.o \
+@@ -278,7 +278,7 @@ RT_WINDOWS_OBJS = core/sys/windows/dbghelp.o core/sys/windows/dll.o \
  
  
  # This should not be linked into a shared library.
@@ -164,16 +153,26 @@ index 842ed4f..037391a 100644
  
  # Regardless of OS, all import headers are generated.
  CORE_IMPORTS = core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
-@@ -592,7 +592,7 @@ gcc/cbridge_math.o: gcc/cbridge_math.c
- 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fno-strict-aliasing -c $<
+@@ -604,14 +604,14 @@ gcc/cbridge_math.o: gcc/cbridge_math.c
  
  libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core/,$(CORE_IMPORTS))
--	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
-+	$(AR) -r $@ $(ALL_DRUNTIME_OBJS)
+ @BACKTRACE_SUPPORTED_TRUE@	cp -f $(LIBBACKTRACE_LIB) $@
+-@BACKTRACE_SUPPORTED_TRUE@	$(AR) -q $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
+-@BACKTRACE_SUPPORTED_FALSE@	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
++@BACKTRACE_SUPPORTED_TRUE@	$(AR) -q $@ $(ALL_DRUNTIME_OBJS)
++@BACKTRACE_SUPPORTED_FALSE@	$(AR) -r $@ $(ALL_DRUNTIME_OBJS)
  	$(RANLIB) $@
  
- #--------------------------------------#
-@@ -602,6 +602,8 @@ install-exec-local: libgdruntime.a
+ libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+ @BACKTRACE_SUPPORTED_TRUE@	cp -f $(LIBBACKTRACE_LIB) $@
+-@BACKTRACE_SUPPORTED_TRUE@	$(AR) -q $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+-@BACKTRACE_SUPPORTED_FALSE@	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
++@BACKTRACE_SUPPORTED_TRUE@	$(AR) -q $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
++@BACKTRACE_SUPPORTED_FALSE@	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
+ 	$(RANLIB) $@
+ 
+ unittest: libgdruntime.a libgdruntime_t.a unittest.o
+@@ -624,6 +624,8 @@ install-exec-local: libgdruntime.a
  	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
  	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
  	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
@@ -182,25 +181,8 @@ index 842ed4f..037391a 100644
  
  install-data-local: libgdruntime.a
  	for i in core; do \
-diff --git a/libphobos/libdruntime/rt/dmain.d b/libphobos/libdruntime/rt/dmain.d
-new file mode 100644
-index 0000000..83439fa
---- /dev/null
-+++ b/libphobos/libdruntime/rt/dmain.d
-@@ -0,0 +1,11 @@
-+private extern (C) int _d_run_main(int argc, char **argv, void* main);
-+
-+/***********************************
-+ * The D main() function supplied by the user's program
-+ */
-+int main();
-+
-+extern (C) int main(int argc, char **argv)
-+{
-+    return _d_run_main(argc, argv, &main);
-+}
 diff --git a/libphobos/libdruntime/rt/dmain2.d b/libphobos/libdruntime/rt/dmain2.d
-index 7c68b45..ba51413 100644
+index 689e4bc..51ea025 100644
 --- a/libphobos/libdruntime/rt/dmain2.d
 +++ b/libphobos/libdruntime/rt/dmain2.d
 @@ -389,10 +389,12 @@ alias extern(C) int function(char[][] args) MainFunc;

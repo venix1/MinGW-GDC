@@ -1,0 +1,40 @@
+From 7cdbfad6071cdc37e5b220ff75a8843ec3504637 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Sat, 22 Jun 2013 06:48:50 -0500
+Subject: [PATCH 10/16] Mark ModuleInfoZ as DLL_EXPORT and DLL_IMPORT
+
+---
+ gcc/d/d-objfile.cc | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/gcc/d/d-objfile.cc b/gcc/d/d-objfile.cc
+index d9d76c4..733a5d2 100644
+--- a/gcc/d/d-objfile.cc
++++ b/gcc/d/d-objfile.cc
+@@ -1257,6 +1257,23 @@ Module::genobjfile (int)
+ 	stest = build_unittest_function ("*__modtest", &mi->unitTests);
+ 
+       genmoduleinfo();
++
++#ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
++    // Apply dllexport for ModuleInfo and dllimport for imports.
++    gen.addDeclAttribute(toSymbol()->Stree, "dllexport");
++
++      for (size_t i = 0; i < aimports.dim; i++)
++    {   
++      Module *m = aimports.tdata()[i];
++            
++        if (m->needmoduleinfo)
++      {   
++        Symbol *s = m->toSymbol();                
++        gen.addDeclAttribute(s->Stree, "dllimport");
++        DECL_DLLIMPORT_P(s->Stree) = 1;
++      }
++    }
++#endif 	  
+     }
+ 
+   // Finish off any thunks deferred during compilation.
+-- 
+1.8.1.msysgit.1
+

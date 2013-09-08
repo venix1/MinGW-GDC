@@ -1,0 +1,428 @@
+From e33744753ca5c4e2484a3a8ab79e16d1711f8c59 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Sun, 8 Sep 2013 10:31:39 -0500
+Subject: [PATCH 01/16] This needs splitting
+
+---
+ gcc/d/d-ctype.cc                                   |  5 ++
+ gcc/d/dfrontend/mtype.c                            |  3 ++
+ libphobos/libdruntime/Makefile.am                  |  2 +-
+ libphobos/libdruntime/Makefile.in                  |  2 +-
+ libphobos/libdruntime/core/sys/posix/sys/wait.d    |  2 +-
+ libphobos/libdruntime/core/sys/windows/dll.d       | 16 +++---
+ libphobos/libdruntime/core/sys/windows/threadaux.d | 37 +++++++++-----
+ libphobos/libdruntime/core/thread.d                | 37 ++++++++++++++
+ libphobos/libdruntime/rt/dmain2.d                  |  6 +++
+ libphobos/src/Makefile.am                          |  2 +-
+ libphobos/src/Makefile.in                          |  2 +-
+ libphobos/src/std/outbuffer.d                      | 14 +++++-
+ libphobos/src/std/stream.d                         | 11 +++-
+ setup-gcc.sh                                       | 58 ++++++++++++----------
+ 14 files changed, 147 insertions(+), 50 deletions(-)
+
+diff --git a/gcc/d/d-ctype.cc b/gcc/d/d-ctype.cc
+index 97f2647..4e7cb82 100644
+--- a/gcc/d/d-ctype.cc
++++ b/gcc/d/d-ctype.cc
+@@ -389,6 +389,11 @@ TypeFunction::toCtype (void)
+ 	    case LINKc:
+ 	    case LINKcpp:
+ 	    case LINKd:
++	    #if TARGET_WINDOS
++            /* GCC switched MinGW's Default ABI to THISCALL/CDECL.  GDC 
++               currently has issues with this so force CDECL fow now. */
++            ctype = insert_type_attribute (ctype, "cdecl");
++	    #endif
+ 	      break;
+ 
+ 	    default:
+diff --git a/gcc/d/dfrontend/mtype.c b/gcc/d/dfrontend/mtype.c
+index 1a2b4d9..94a998e 100644
+--- a/gcc/d/dfrontend/mtype.c
++++ b/gcc/d/dfrontend/mtype.c
+@@ -2187,8 +2187,11 @@ Identifier *Type::getTypeInfoIdent(int internal)
+     assert(strlen(name) < namelen);     // don't overflow the buffer
+ 
+     size_t off = 0;
++// MinGW needs the '_'
++#if !defined(__MINGW32__)
+     if (global.params.isOSX || global.params.isWindows && !global.params.is64bit)
+         ++off;                 // C mangling will add '_' back in
++#endif
+     Identifier *id = Lexer::idPool(name + off);
+ 
+     if (name != namebuf)
+diff --git a/libphobos/libdruntime/Makefile.am b/libphobos/libdruntime/Makefile.am
+index f5d88ac..4b61373 100644
+--- a/libphobos/libdruntime/Makefile.am
++++ b/libphobos/libdruntime/Makefile.am
+@@ -116,7 +116,7 @@ RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o \
+ 
+ RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
+ 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
+-		core/sys/windows/windows.o
++		core/sys/windows/windows.o core/sys/windows/mingwex.o
+ 
+ # This should not be linked into a shared library.
+ CMAIN_OBJS= #rt/cmain.o
+diff --git a/libphobos/libdruntime/Makefile.in b/libphobos/libdruntime/Makefile.in
+index 965b086..b80fcf3 100644
+--- a/libphobos/libdruntime/Makefile.in
++++ b/libphobos/libdruntime/Makefile.in
+@@ -274,7 +274,7 @@ RT_POSIX_OBJS = core/sys/posix/dirent.o core/sys/posix/netdb.o \
+ 
+ RT_WINDOWS_OBJS = core/sys/windows/dbghelp.o core/sys/windows/dll.o \
+ 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
+-		core/sys/windows/windows.o
++		core/sys/windows/windows.o core/sys/windows/mingwex.o
+ 
+ 
+ # This should not be linked into a shared library.
+diff --git a/libphobos/libdruntime/core/sys/posix/sys/wait.d b/libphobos/libdruntime/core/sys/posix/sys/wait.d
+index b21eef4..63322ef 100644
+--- a/libphobos/libdruntime/core/sys/posix/sys/wait.d
++++ b/libphobos/libdruntime/core/sys/posix/sys/wait.d
+@@ -14,12 +14,12 @@
+  */
+ module core.sys.posix.sys.wait;
+ 
++version (Posix):
+ private import core.sys.posix.config;
+ public import core.sys.posix.sys.types; // for id_t, pid_t
+ public import core.sys.posix.signal;    // for siginfo_t (XSI)
+ //public import core.sys.posix.resource; // for rusage (XSI)
+ 
+-version (Posix):
+ extern (C):
+ 
+ //
+diff --git a/libphobos/libdruntime/core/sys/windows/dll.d b/libphobos/libdruntime/core/sys/windows/dll.d
+index 271091b..1a6e2bf 100644
+--- a/libphobos/libdruntime/core/sys/windows/dll.d
++++ b/libphobos/libdruntime/core/sys/windows/dll.d
+@@ -297,7 +297,7 @@ public:
+      *
+      * _tls_index is initialized by the compiler to 0, so we can use this as a test.
+      */
+-    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex ) nothrow
++    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex )
+     {
+         version (Win64)
+             return true;                // fixed
+@@ -312,11 +312,15 @@ public:
+             return true;
+ 
+         void** peb;
+-        asm
+-        {
+-            mov EAX,FS:[0x30];
+-            mov peb, EAX;
+-        }
++        version( GNU_InlineAsm ) 
++            asm { "movl %%fs:0x30, %0;" : "=r" peb; }
++        else        
++            asm
++            {
++                mov EAX,FS:[0x30];
++                mov peb, EAX;
++            }
++        
+         dll_aux.LDR_MODULE *ldrMod = dll_aux.findLdrModule( hInstance, peb );
+         if( !ldrMod )
+             return false; // not in module list, bail out
+diff --git a/libphobos/libdruntime/core/sys/windows/threadaux.d b/libphobos/libdruntime/core/sys/windows/threadaux.d
+index 1054b51..44559d0 100644
+--- a/libphobos/libdruntime/core/sys/windows/threadaux.d
++++ b/libphobos/libdruntime/core/sys/windows/threadaux.d
+@@ -162,26 +162,39 @@ private:
+         }
+ 
+         // get linear address of TEB of current thread
+-        static void** getTEB() nothrow
++        static void** getTEB() 
+         {
+             version(Win32)
+             {
+-                asm
++                version( GNU_InlineAsm ) 
+                 {
+-                    naked;
+-                    mov EAX,FS:[0x18];
+-                    ret;
++                    void** teb;
++                    asm 
++                    { 
++                        "movl %%fs:0x18, %0;" : "=r" teb;
++                    }
++                    return teb;
+                 }
++                else
++                    asm
++                    {
++                        naked;
++                        mov EAX,FS:[0x18];
++                        ret;
++                    }
+             }
+             else version(Win64)
+             {
+-                asm
+-                {
+-                    naked;
+-                    mov RAX,0x30;
+-                    mov RAX,GS:[RAX]; // immediate value causes fixup
+-                    ret;
+-                }
++                version(GNU_InlineAsm)
++                    static assert(false, "unsupported");
++                else
++                    asm
++                    {
++                        naked;
++                        mov RAX,0x30;
++                        mov RAX,GS:[RAX]; // immediate value causes fixup
++                        ret;
++                    }
+             }
+             else
+             {
+diff --git a/libphobos/libdruntime/core/thread.d b/libphobos/libdruntime/core/thread.d
+index f99ee9b..ba88300 100644
+--- a/libphobos/libdruntime/core/thread.d
++++ b/libphobos/libdruntime/core/thread.d
+@@ -152,6 +152,22 @@ version( Windows )
+                 alias _tls_end   _tlsend;
+             }
+         }
++        else version( MinGW )
++        {
++            import gcc.builtins;
++        
++            // NOTE: The memory between the addresses of _tls_start and _tls_end
++            //       is the storage for thread-local data in MinGW.  Both of
++            //       these are defined in tlssup.c.
++            extern (C)
++            {
++                extern int _tls_start;
++                extern int _tls_end;
++            }
++            
++            alias _tls_start _tlsstart;
++            alias _tls_end _tlsend;
++        }        
+         else
+         {
+             __gshared int   _tlsstart;
+@@ -2883,6 +2899,19 @@ private void* getStackBottom()
+                  mov RAX, GS:[RAX];
+                  ret;
+             }
++        else version( GNU_InlineAsm )
++        {
++            void *bottom;
++
++            version( X86 )
++                asm{ "movl %%fs:4, %0;" : "=r" bottom; }                
++            else version( X86_64 )
++                asm{ "movq %%gs:8, %0;" : "=r" bottom; }            
++            else
++                static assert( false, "Platform not supported.");
++
++            return bottom;
++        }                    
+         else
+             static assert(false, "Architecture not supported.");
+     }
+@@ -3396,6 +3425,10 @@ private
+                 jmp RCX;
+             }
+         }
++        else version(MinGW)
++        {
++            assert(0, "unimplemented");
++        }
+         else static if( __traits( compiles, ucontext_t ) )
+         {
+             Fiber   cfib = Fiber.getThis();
+@@ -4223,6 +4256,10 @@ private:
+             pstack -= ABOVE;
+             *cast(size_t*)(pstack - SZ_RA) = cast(size_t)&fiber_entryPoint;
+         }
++        else version(MinGW)
++        {
++            assert(0, "unimplemented");
++        }
+         else static if( __traits( compiles, ucontext_t ) )
+         {
+             getcontext( &m_utxt );
+diff --git a/libphobos/libdruntime/rt/dmain2.d b/libphobos/libdruntime/rt/dmain2.d
+index 7c68b45..689e4bc 100644
+--- a/libphobos/libdruntime/rt/dmain2.d
++++ b/libphobos/libdruntime/rt/dmain2.d
+@@ -515,6 +515,12 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
+     {
+         if (IsDebuggerPresent())
+             trapExceptions = false;
++        version (MinGW)
++        {
++            /* IsDebuggerPresent doesn't detect GDC.  Would be nice to have
++               some way of detecting valid console output */
++            trapExceptions = true;
++        }
+     }
+ 
+     void tryExec(scope void delegate() dg)
+diff --git a/libphobos/src/Makefile.am b/libphobos/src/Makefile.am
+index 61aca58..cae40d8 100644
+--- a/libphobos/src/Makefile.am
++++ b/libphobos/src/Makefile.am
+@@ -109,7 +109,7 @@ FREEBSD_OBJS=std/c/freebsd/socket.o
+ WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
+ 	     std/c/windows/windows.o std/c/windows/winsock.o \
+ 	     std/windows/charset.o std/windows/iunknown.o std/windows/registry.o \
+-	     std/windows/syserror.o std/__fileinit.o std/internal/windows/advapi32.o
++	     std/windows/syserror.o std/internal/windows/advapi32.o
+ 
+ D_EXTRA_OBJS=@D_EXTRA_OBJS@
+ 
+diff --git a/libphobos/src/Makefile.in b/libphobos/src/Makefile.in
+index 23c29fe..7b3bb47 100644
+--- a/libphobos/src/Makefile.in
++++ b/libphobos/src/Makefile.in
+@@ -270,7 +270,7 @@ FREEBSD_OBJS = std/c/freebsd/socket.o
+ WINDOWS_OBJS = std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
+ 	     std/c/windows/windows.o std/c/windows/winsock.o \
+ 	     std/windows/charset.o std/windows/iunknown.o std/windows/registry.o \
+-	     std/windows/syserror.o std/__fileinit.o std/internal/windows/advapi32.o
++	     std/windows/syserror.o std/internal/windows/advapi32.o
+ 
+ ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
+ 
+diff --git a/libphobos/src/std/outbuffer.d b/libphobos/src/std/outbuffer.d
+index ffe1c16..3b8f4a9 100644
+--- a/libphobos/src/std/outbuffer.d
++++ b/libphobos/src/std/outbuffer.d
+@@ -267,7 +267,19 @@ class OutBuffer
+         auto psize = buffer.length;
+         for (;;)
+         {
+-            version(Windows)
++            version(MinGW)
++            {
++                /* _vsnprintf defaults to msvcrt which is not comptable. */
++                count = vsnprintf(p,psize,f,args);
++                if (count == -1)
++                    psize *= 2;
++                else if (count >= psize)
++                    psize = count + 1;
++                else
++                    break;                    
++                p = cast(char *) alloca(psize); // buffer too small, try again with larger size            
++            } 
++            else version(Windows)
+             {
+                 count = _vsnprintf(p,psize,f,args);
+                 if (count != -1)
+diff --git a/libphobos/src/std/stream.d b/libphobos/src/std/stream.d
+index 9e65602..91d5937 100644
+--- a/libphobos/src/std/stream.d
++++ b/libphobos/src/std/stream.d
+@@ -1145,7 +1145,16 @@ class Stream : InputStream, OutputStream {
+     size_t psize = buffer.length;
+     size_t count;
+     while (true) {
+-      version (Windows) {
++      version (MinGW) {
++        count = vsnprintf(p, psize, f, args);
++        if (count == -1)
++          psize *= 2;
++        else if (count >= psize)
++          psize = count + 1;
++        else
++          break;
++        p = cast(char*) alloca(psize);
++      } else version (Windows) {
+         count = _vsnprintf(p, psize, f, args);
+         if (count != -1)
+           break;
+diff --git a/setup-gcc.sh b/setup-gcc.sh
+index 214992f..84d4ac1 100755
+--- a/setup-gcc.sh
++++ b/setup-gcc.sh
+@@ -13,6 +13,7 @@ fi
+ d_gccsrc=
+ d_update_gcc=0
+ top=`pwd`
++is_mingw=`[ "$(uname -s)" == "MINGW32_NT-6.1" ] && echo 1`
+ 
+ # Read command line arguments
+ for arg in "$@"; do
+@@ -63,33 +64,40 @@ if test ! -f gcc/"$gcc_patch_fn"; then
+     exit 1
+ fi
+ 
+-# 1. Remove d sources from d_gccsrc if already exist
+-test -h "$d_gccsrc/gcc/d" && rm "$d_gccsrc/gcc/d"
+-test -d "$d_gccsrc/libphobos" && rm -r "$d_gccsrc/libphobos"
+-if test -e "$d_gccsrc/gcc/d" -o -e "$d_gccsrc/libphobos"; then
+-    echo "error: cannot update gcc source, please remove D sources by hand."
+-    exit 1
+-fi
+-
+-d_test=$d_gccsrc/gcc/testsuite
+-# remove testsuite sources
+-test -d "$d_test/gdc.test" && rm -r "$d_test/gdc.test"
+-test -e "$d_test/lib/gdc.exp" && rm "$d_test/lib/gdc.exp"
+-test -e "$d_test/lib/gdc-dg.exp" && rm "$d_test/lib/gdc-dg.exp"
+-if test -e "$d_test/gdc.test" -o -e "$d_test/lib/gdc.exp" -o -e "$d_test/lib/gdc-dg.exp"; then
+-    echo "error: cannot update gcc source, please remove D testsuite sources by hand."
+-    exit 1
+-fi
+-
++# MinGW lacks symbolic links, so we use rsync. This ensures only modified files get rebuilt.
++if [ $is_mingw ]; then
++  rsync -rav "$top/gcc/d" "$d_gccsrc/gcc/"
++  rsync -rav "$top/libphobos" "$d_gccsrc/"
++  rsync -rav "$top/gcc/testsuite" "$d_gccsrc/gcc/"
++  cd $top
++else
++  # 1. Remove d sources from d_gccsrc if already exist
++  test -h "$d_gccsrc/gcc/d" && rm -r "$d_gccsrc/gcc/d"
++  test -d "$d_gccsrc/libphobos" && rm -r "$d_gccsrc/libphobos"
++  if test -e "$d_gccsrc/gcc/d" -o -e "$d_gccsrc/libphobos"; then
++      echo "error: cannot update gcc source, please remove D sources by hand."
++      exit 1
++  fi
++
++  d_test=$d_gccsrc/gcc/testsuite
++  # remove testsuite sources
++  test -d "$d_test/gdc.test" && rm -r "$d_test/gdc.test"
++  test -e "$d_test/lib/gdc.exp" && rm "$d_test/lib/gdc.exp"
++  test -e "$d_test/lib/gdc-dg.exp" && rm "$d_test/lib/gdc-dg.exp"
++  if test -e "$d_test/gdc.test" -o -e "$d_test/lib/gdc.exp" -o -e "$d_test/lib/gdc-dg.exp"; then
++      echo "error: cannot update gcc source, please remove D testsuite sources by hand."
++      exit 1
++  fi
+ 
+ # 2. Copy sources
+-ln -s "$top/gcc/d" "$d_gccsrc/gcc/d"   && \
+-  mkdir "$d_gccsrc/libphobos"          && \
+-  cd "$d_gccsrc/libphobos"             && \
+-  ../symlink-tree "$top/libphobos"     && \
+-  cd "../gcc/testsuite"                && \
+-  ../../symlink-tree "$top/gcc/testsuite" && \
+-  cd $top
++  ln -s "$top/gcc/d" "$d_gccsrc/gcc/d"   && \
++    mkdir "$d_gccsrc/libphobos"          && \
++    cd "$d_gccsrc/libphobos"             && \
++    ../symlink-tree "$top/libphobos"     && \
++    cd "../gcc/testsuite"                && \
++    ../../symlink-tree "$top/gcc/testsuite" && \
++    cd $top
++fi
+ 
+ 
+ if test $d_update_gcc -eq 1; then
+-- 
+1.8.1.msysgit.1
+

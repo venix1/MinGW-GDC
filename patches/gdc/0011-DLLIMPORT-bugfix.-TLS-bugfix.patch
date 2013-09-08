@@ -1,0 +1,43 @@
+From 75fcd6ad7e685e49eeb8da608e0c78cfa9f7b982 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Sat, 22 Jun 2013 07:05:44 -0500
+Subject: [PATCH 11/16] DLLIMPORT bugfix. TLS bugfix
+
+---
+ gcc/d/d-objfile.cc | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/gcc/d/d-objfile.cc b/gcc/d/d-objfile.cc
+index 733a5d2..73eb47e 100644
+--- a/gcc/d/d-objfile.cc
++++ b/gcc/d/d-objfile.cc
+@@ -1260,7 +1260,7 @@ Module::genobjfile (int)
+ 
+ #ifdef TARGET_DLLIMPORT_DECL_ATTRIBUTES
+     // Apply dllexport for ModuleInfo and dllimport for imports.
+-    gen.addDeclAttribute(toSymbol()->Stree, "dllexport");
++    insert_decl_attribute (toSymbol()->Stree, "dllexport");
+ 
+       for (size_t i = 0; i < aimports.dim; i++)
+     {   
+@@ -1269,7 +1269,7 @@ Module::genobjfile (int)
+         if (m->needmoduleinfo)
+       {   
+         Symbol *s = m->toSymbol();                
+-        gen.addDeclAttribute(s->Stree, "dllimport");
++        insert_decl_attribute (s->Stree, "dllimport");
+         DECL_DLLIMPORT_P(s->Stree) = 1;
+       }
+     }
+@@ -1677,7 +1677,7 @@ d_finish_function (FuncDeclaration *f)
+   // For MinGW we alias _tls_start and _tls_end.  Otherwise we have an offset
+   // that could result in memory corruption.  As well as alignment issues for
+   // the GC.
+-  if (f->isMain() || f->isWinMain() || f->isDllMain() && !TARGET_WINDOS)
++  if (!TARGET_WINDOS && (f->isMain() || f->isWinMain() || f->isDllMain()))
+     build_tlssections();
+ 
+   if (s->prettyIdent)
+-- 
+1.8.1.msysgit.1
+
