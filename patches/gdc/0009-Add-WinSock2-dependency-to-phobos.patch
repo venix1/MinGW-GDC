@@ -1,7 +1,7 @@
-From 7f0f76e5cf232dbd7c1e554ec04a0f0b9ac8f942 Mon Sep 17 00:00:00 2001
+From 421aefb6c1de2600a2746b2f822d496008734bcb Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sat, 22 Jun 2013 06:45:55 -0500
-Subject: [PATCH 09/16] Add WinSock2 dependency to phobos
+Subject: [PATCH 09/18] Add WinSock2 dependency to phobos
 
 ---
  gcc/d/d-spec.c | 36 ++++++++++++++++++++++++++++++++++++

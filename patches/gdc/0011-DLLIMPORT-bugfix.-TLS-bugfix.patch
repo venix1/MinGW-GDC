@@ -1,7 +1,7 @@
-From 75fcd6ad7e685e49eeb8da608e0c78cfa9f7b982 Mon Sep 17 00:00:00 2001
+From 61e3e3c879eb8b3ce279b0701db194eaa319de56 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sat, 22 Jun 2013 07:05:44 -0500
-Subject: [PATCH 11/16] DLLIMPORT bugfix. TLS bugfix
+Subject: [PATCH 11/18] DLLIMPORT bugfix. TLS bugfix
 
 ---
  gcc/d/d-objfile.cc | 6 +++---

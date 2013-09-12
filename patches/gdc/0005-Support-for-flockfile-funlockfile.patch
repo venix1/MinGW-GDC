@@ -1,7 +1,7 @@
-From 3f7abb56ff06a74a225547aef2371f52e799989b Mon Sep 17 00:00:00 2001
+From b59c79ea1f8e22edd585b2cc789c1d65b929b9d7 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Fri, 21 Jun 2013 17:28:59 -0500
-Subject: [PATCH 05/16] Support for flockfile & funlockfile
+Subject: [PATCH 05/18] Support for flockfile & funlockfile
 
 ---
  libphobos/src/std/stdio.d | 48 +++++++++++++++++++++++++++++++++++++++++++----

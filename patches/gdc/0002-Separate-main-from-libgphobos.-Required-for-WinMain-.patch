@@ -1,7 +1,7 @@
-From 743aaa9f298f45a18b1e4a4ac8b6ceddaa533d27 Mon Sep 17 00:00:00 2001
+From 1ca28644c98e186bb0189cc187204ea34d381780 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sat, 15 Jun 2013 09:17:28 -0500
-Subject: [PATCH 02/16] Separate main from libgphobos. Required for WinMain/Dll
+Subject: [PATCH 02/18] Separate main from libgphobos. Required for WinMain/Dll
  linkage
 
 ---

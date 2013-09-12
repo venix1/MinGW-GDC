@@ -1,7 +1,7 @@
-From e33744753ca5c4e2484a3a8ab79e16d1711f8c59 Mon Sep 17 00:00:00 2001
+From eadee2a0963460699e868b0620bf8b34bda488fe Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sun, 8 Sep 2013 10:31:39 -0500
-Subject: [PATCH 01/16] This needs splitting
+Subject: [PATCH 01/18] This needs splitting
 
 ---
  gcc/d/d-ctype.cc                                   |  5 ++

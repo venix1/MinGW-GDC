@@ -1,7 +1,7 @@
-From 415479ae4f521486c78ad09c442d5e1209041539 Mon Sep 17 00:00:00 2001
+From 3f0138eafb40ced5237616d4f06c838c795e9a5f Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sat, 22 Jun 2013 07:14:28 -0500
-Subject: [PATCH 13/16] Interlocked* cannot be export in 64-bit Windows. They
+Subject: [PATCH 13/18] Interlocked* cannot be export in 64-bit Windows. They
  are compiler intrinsics
 
 ---

@@ -1,7 +1,7 @@
-From 39dd017a9e65ea0022e9097ebf4ae1602489582c Mon Sep 17 00:00:00 2001
+From e5f8bf6631cbc523597a1c414f4bf3468053ddc3 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Fri, 21 Jun 2013 17:35:10 -0500
-Subject: [PATCH 07/16] Add static assert for unsupported platforms
+Subject: [PATCH 07/18] Add static assert for unsupported platforms
 
 ---
  libphobos/libdruntime/core/sync/condition.d | 28 ++++++++++++++++++++++++++++

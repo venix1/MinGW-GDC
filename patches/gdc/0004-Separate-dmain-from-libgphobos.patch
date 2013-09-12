@@ -1,7 +1,7 @@
-From 844ef19ad672f72f21429541492831a3ec462fdc Mon Sep 17 00:00:00 2001
+From edd6af5b3284bce89ff83abe1ed24f8c0cd2d387 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Fri, 21 Jun 2013 17:28:06 -0500
-Subject: [PATCH 04/16] Separate dmain from libgphobos
+Subject: [PATCH 04/18] Separate dmain from libgphobos
 
 ---
  libphobos/libdruntime/rt/dmain.d | 11 +++++++++++

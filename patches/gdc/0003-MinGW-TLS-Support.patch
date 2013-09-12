@@ -1,7 +1,7 @@
-From def1f9be49fce9cb02ec47df63bc4c3fd4875881 Mon Sep 17 00:00:00 2001
+From 5ab957378b4920e2271e8826c609b4ad4139523c Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Fri, 21 Jun 2013 17:27:36 -0500
-Subject: [PATCH 03/16] MinGW TLS Support
+Subject: [PATCH 03/18] MinGW TLS Support
 
 ---
  gcc/d/d-objfile.cc                                |   5 +-

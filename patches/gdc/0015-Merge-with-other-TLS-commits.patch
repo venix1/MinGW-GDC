@@ -1,7 +1,7 @@
-From 3280e19b899f81186070cc324c867afbe482b14e Mon Sep 17 00:00:00 2001
+From aae16d3984f57702e2b2883b9f11fd820560448c Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sat, 22 Jun 2013 07:20:15 -0500
-Subject: [PATCH 15/16] Merge with other TLS commits
+Subject: [PATCH 15/18] Merge with other TLS commits
 
 ---
  gcc/d/d-objfile.cc | 6 ++++--

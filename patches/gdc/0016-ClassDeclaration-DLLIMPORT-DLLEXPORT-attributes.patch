@@ -1,7 +1,7 @@
-From 661b62966e37bc18241ff61ff863fc523c925cc8 Mon Sep 17 00:00:00 2001
+From a2506407d6da03a0f184a69c5732b8f3c1fa5659 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Thu, 27 Jun 2013 10:03:32 -0500
-Subject: [PATCH 16/16] ClassDeclaration DLLIMPORT / DLLEXPORT attributes
+Subject: [PATCH 16/18] ClassDeclaration DLLIMPORT / DLLEXPORT attributes
 
 ---
  gcc/d/d-decls.cc | 4 ++--

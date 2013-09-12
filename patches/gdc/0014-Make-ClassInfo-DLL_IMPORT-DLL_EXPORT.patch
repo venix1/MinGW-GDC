@@ -1,7 +1,7 @@
-From 7cf37bea98bbd498243d88d619435ce4313db95b Mon Sep 17 00:00:00 2001
+From 81137e50b5e4ef3297909eef4726160da732a699 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sat, 22 Jun 2013 07:16:41 -0500
-Subject: [PATCH 14/16] Make ClassInfo DLL_IMPORT & DLL_EXPORT
+Subject: [PATCH 14/18] Make ClassInfo DLL_IMPORT & DLL_EXPORT
 
 ---
  gcc/d/d-decls.cc | 11 +++++++++++

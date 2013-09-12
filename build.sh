@@ -280,7 +280,7 @@ function build_gdc {
 	export LPATH="$GCC_PREFIX/lib;$GCC_PREFIX/i686-pc-mingw32/lib"
 	export CPATH="$GCC_PREFIX/include"
 
-	../configure --prefix=$GCC_PREFIX --build=i686-mingw32 --with-gmp=/crossdev/gdc-4.8/gmp-4.3.2 --with-mpfr=/crossdev/gdc-4.8/mpfr-3.1.1 --with-mpc=/crossdev/gdc-4.8/mpc-1.0.1 --with-cloog=/crossdev/gdc-4.8/cloog-0.18.0 --with-isl=/crossdev/gdc-4.8/isl-0.11.1 --disable-bootstrap --enable-languages=c,c++,d,lto --enable-sjlj-exceptions 
+	../configure --prefix=$GCC_PREFIX --build=i686-mingw32 --with-gmp=/crossdev/gdc-4.8/gmp-4.3.2 --with-mpfr=/crossdev/gdc-4.8/mpfr-3.1.1 --with-mpc=/crossdev/gdc-4.8/mpc-1.0.1 --with-cloog=/crossdev/gdc-4.8/cloog-0.18.0 --with-isl=/crossdev/gdc-4.8/isl-0.11.1 --disable-bootstrap --enable-languages=c,c++,d,lto --enable-sjlj-exceptions --disable-shared
 	make && make install
 	popd
 }

@@ -1,0 +1,25 @@
+From af0db934497a7056087a7fed120ece18a0c9ad5d Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Tue, 10 Sep 2013 19:46:20 -0500
+Subject: [PATCH 17/18] alloca is declared in malloc.h
+
+---
+ gcc/d/dfrontend/speller.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/gcc/d/dfrontend/speller.c b/gcc/d/dfrontend/speller.c
+index 7f7a0a7..4888351 100644
+--- a/gcc/d/dfrontend/speller.c
++++ b/gcc/d/dfrontend/speller.c
+@@ -15,6 +15,8 @@
+ #if __sun || _MSC_VER
+ #include <alloca.h>
+ #endif
++//#elif __MINGW__
++#include <malloc.h>
+ 
+ #include "speller.h"
+ 
+-- 
+1.8.1.msysgit.1
+

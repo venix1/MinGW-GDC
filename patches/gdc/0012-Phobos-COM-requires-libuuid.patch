@@ -1,7 +1,7 @@
-From 9b17f734e15753169c4248a102a5444564bc4575 Mon Sep 17 00:00:00 2001
+From 9278a9660acff57472725a31d75bc8f26e19dee7 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sat, 22 Jun 2013 07:12:32 -0500
-Subject: [PATCH 12/16] Phobos COM requires libuuid
+Subject: [PATCH 12/18] Phobos COM requires libuuid
 
 ---
  gcc/d/d-spec.c | 26 ++++++++++++++++++++++++++

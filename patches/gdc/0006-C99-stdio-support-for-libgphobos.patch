@@ -1,7 +1,7 @@
-From e5b247a1592f3c4896d33ef977b7b43309c92c04 Mon Sep 17 00:00:00 2001
+From 09fc844471c3b665f8abbcc641034f4215e27de0 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Fri, 21 Jun 2013 17:29:29 -0500
-Subject: [PATCH 06/16] C99 stdio support for libgphobos
+Subject: [PATCH 06/18] C99 stdio support for libgphobos
 
 ---
  libphobos/libdruntime/core/sys/windows/mingwex.d | 272 +++++++++++++++++++++++

@@ -1,7 +1,7 @@
-From 4ddfe5b85c447e6fbbf625ca6d09dbad084daf70 Mon Sep 17 00:00:00 2001
+From 6de7dd026626ede3fe2dcfe7e6ee52d3239e2bfb Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sat, 22 Jun 2013 06:45:37 -0500
-Subject: [PATCH 08/16] Possible 64-bit issue detectoin
+Subject: [PATCH 08/18] Possible 64-bit issue detectoin
 
 ---
  gcc/d/d-builtins.c | 2 ++
