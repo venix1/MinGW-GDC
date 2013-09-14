@@ -240,10 +240,11 @@ function build_gdc {
 		git config core.autocrlf false
 		git add *
 		git commit -am "MinGW/GDC restore point"
+		git tag mingw_build
 		cd ..
 	else
 		cd gcc-4.8.1
-		git reset --hard
+		git reset --hard mingw_build
 		git clean -f -d	
 		cd ..
 	fi
@@ -293,7 +294,7 @@ export GCC_PREFIX="/crossdev/gdc-4.8/release"
 export PATH="$GCC_PREFIX/bin:$PATH"
 build_gdc
 
-# get DMD scrtipt
+# get DMD script
 if [ ! -d "GDMD" ]; then
 	git clone https://github.com/D-Programming-GDC/GDMD.git
 else
@@ -335,5 +336,3 @@ pushd dmd/test
 patch -p2 < $root/patches/mingw-testsuite.patch
 make
 pushd
-
-
