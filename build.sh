@@ -225,14 +225,14 @@ fi
 
 # Setup GDC and compile
 function build_gdc {
-	if [ ! -e "gcc-4.8.0.tar.bz2" ]; then
-		wget http://ftp.gnu.org/gnu/gcc/gcc-4.8.0/gcc-4.8.0.tar.bz2	
+	if [ ! -e "gcc-4.8.1.tar.bz2" ]; then
+		wget http://ftp.gnu.org/gnu/gcc/gcc-4.8.1/gcc-4.8.1.tar.bz2	
 	fi
 
 	# Extract and configure a git repo to allow fast restoration for future builds.
-	if [ ! -d "gcc-4.8.0" ]; then
-		tar -xvjf gcc-4.8.0.tar.bz2
-		cd gcc-4.8.0
+	if [ ! -d "gcc-4.8.1" ]; then
+		tar -xvjf gcc-4.8.1.tar.bz2
+		cd gcc-4.8.1
 		# prune unnecessary folders.
 		git init
 		git config user.email "nobody@localhost"
@@ -242,7 +242,7 @@ function build_gdc {
 		git commit -am "MinGW/GDC restore point"
 		cd ..
 	else
-		cd gcc-4.8.0
+		cd gcc-4.8.1
 		git reset --hard
 		git clean -f -d	
 		cd ..
@@ -266,11 +266,16 @@ function build_gdc {
 		echo "Patching $patch"
 		git am $patch || exit
 	done
-	./setup-gcc.sh ../gcc-4.8.0
+	./setup-gcc.sh ../gcc-4.8.1
 	popd
 
-	pushd gcc-4.8.0
+	pushd gcc-4.8.1
 	patch -p1 < $root/patches/mingw-tls-gcc-4.8.patch
+	
+	for patch in $(find $root/patches/gcc -type f ); do
+		echo "Patching $patch"
+		git am $patch || exit
+	done
 
 	# Build GCC
 	mkdir -p build

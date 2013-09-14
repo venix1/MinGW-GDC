@@ -1,0 +1,45 @@
+From fb371e6153cd54a778b5772d07046f4ac6055bfd Mon Sep 17 00:00:00 2001
+From: Nobody <nobody@localhost>
+Date: Fri, 13 Sep 2013 18:30:12 -0500
+Subject: [PATCH] Remove -fPIC for MinGW
+
+---
+ libbacktrace/configure    | 5 ++++-
+ libbacktrace/configure.ac | 5 ++++-
+ 2 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/libbacktrace/configure b/libbacktrace/configure
+index 46ad9ee..1ad8485 100644
+--- a/libbacktrace/configure
++++ b/libbacktrace/configure
+@@ -11688,7 +11688,10 @@ fi
+ # complicate dependencies.  Instead, we just compile with -fPIC.
+ PIC_FLAG=
+ if test -n "${with_target_subdir}"; then
+-  PIC_FLAG=-fPIC
++   case "${host}" in
++   *-*-mingw*) ;;
++   *) PIC_FLAG=-fPIC ;;
++   esac
+ fi
+ 
+ 
+diff --git a/libbacktrace/configure.ac b/libbacktrace/configure.ac
+index 28b2a1c..5edfa34 100644
+--- a/libbacktrace/configure.ac
++++ b/libbacktrace/configure.ac
+@@ -163,7 +163,10 @@ fi
+ # complicate dependencies.  Instead, we just compile with -fPIC.
+ PIC_FLAG=
+ if test -n "${with_target_subdir}"; then
+-  PIC_FLAG=-fPIC
++   case "${host}" in
++   *-*-mingw*) ;;
++   *) PIC_FLAG=-fPIC ;;
++   esac
+ fi
+ AC_SUBST(PIC_FLAG)
+ 
+-- 
+1.8.1.msysgit.1
+
