@@ -25,6 +25,24 @@ fi
 root=$(pwd)
 pushd /crossdev/gdc-4.8/src
 
+# Install some basic DLL dependencies
+mkdir -p /crossdev/gdc-4.8/release/bin
+
+if [ ! -e "libiconv-1.14-3-mingw32-dll.tar.lzma" ]; then
+	wget http://sourceforge.net/projects/mingw/files/MinGW/Base/libiconv/libiconv-1.14-3/libiconv-1.14-3-mingw32-dll.tar.lzma/download
+	tar --lzma -xvf libiconv-1.14-3-mingw32-dll.tar.lzma -C /crossdev/gdc-4.8/release
+fi
+
+if [ ! -e "gettext-0.18.3.1-1-mingw32-dll.tar.lzma" ]; then
+	wget http://sourceforge.net/projects/mingw/files/MinGW/Base/gettext/gettext-0.18.3.1-1/gettext-0.18.3.1-1-mingw32-dll.tar.lzma/download
+	tar --lzma -xvf gettext-0.18.3.1-1-mingw32-dll.tar.lzma -C /crossdev/gdc-4.8/release
+fi
+
+if [ ! -e "gcc-core-4.8.1-3-mingw32-dll.tar.lzma" ]; then
+	wget http://hivelocity.dl.sourceforge.net/project/mingw/MinGW/Base/gcc/Version4/gcc-4.8.1-3/gcc-core-4.8.1-3-mingw32-dll.tar.lzma
+	tar --lzma -xvf gcc-core-4.8.1-3-mingw32-dll.tar.lzma -C /crossdev/gdc-4.8/release bin/libgcc_s_dw2-1.dll 
+fi
+
 # Extracts archive and converts to git repo. For patch maintenance and rebuilds
 function extract_to_git {
 	return
@@ -57,6 +75,9 @@ function extract_to_git {
 
 # From this point forward, always exit on error
 set -e
+
+# Download and install x86_64 build toos
+#"http://superb-dca2.dl.sourceforge.net/project/mingw-w64/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.8.2/threads-win32/sjlj/x86_64-4.8.2-release-win32-sjlj-rt_v3-rev0.7z"
 
 # Compile binutils
 if [ ! -e binutils-2.23.2/build/.built ]; then
@@ -285,8 +306,9 @@ function build_gdc {
 	# Must build GCC using patched mingwrt
 	export LPATH="$GCC_PREFIX/lib;$GCC_PREFIX/i686-pc-mingw32/lib"
 	export CPATH="$GCC_PREFIX/include"
+	#export BOOT_CFLAGS="-static-libgcc -static"
 
-	../configure --prefix=$GCC_PREFIX --build=i686-mingw32 --with-gmp=/crossdev/gdc-4.8/gmp-4.3.2 --with-mpfr=/crossdev/gdc-4.8/mpfr-3.1.1 --with-mpc=/crossdev/gdc-4.8/mpc-1.0.1 --with-cloog=/crossdev/gdc-4.8/cloog-0.18.0 --with-isl=/crossdev/gdc-4.8/isl-0.11.1 --disable-bootstrap --enable-languages=c,c++,d,lto --enable-sjlj-exceptions --disable-shared
+	../configure --prefix=$GCC_PREFIX --build=i686-mingw32 --with-gmp=/crossdev/gdc-4.8/gmp-4.3.2 --with-mpfr=/crossdev/gdc-4.8/mpfr-3.1.1 --with-mpc=/crossdev/gdc-4.8/mpc-1.0.1 --with-cloog=/crossdev/gdc-4.8/cloog-0.18.0 --with-isl=/crossdev/gdc-4.8/isl-0.11.1 --enable-languages=c,c++,d,lto --enable-sjlj-exceptions --disable-shared --disable-bootstrap
 	make && make install
 	popd
 }

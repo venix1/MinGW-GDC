@@ -1,5 +1,5 @@
 diff --git a/test/Makefile b/test/Makefile
-index 8c4714f..af02aef 100644
+index 8c4714f..2187555 100644
 --- a/test/Makefile
 +++ b/test/Makefile
 @@ -99,11 +99,11 @@ export REQUIRED_ARGS=
@@ -17,23 +17,24 @@ index 8c4714f..af02aef 100644
  # bug in vim syntax hilighting, needed to kick it back into life: ')
  else
  export ARGS=-inline -release -gc -O -unittest -fPIC
-@@ -130,6 +130,15 @@ DISABLED_TESTS += test17
+@@ -130,6 +130,16 @@ DISABLED_TESTS += test17
  DISABLED_SH_TESTS += test39
  endif
  
-+DISABLED_TESTS += a20 argufilem bitops bug9010 constfold cov2 ctorpowtests eh   
-+DISABLED_TESTS += hello-profile inner nested sdtor sieve template9 test11 test23 test34      
-+DISABLED_TESTS += test36 test4 test42 testdstress testmodule testsafe           
-+DISABLED_TESTS += testsocket testthread variadic xtest46                        
++DISABLED_TESTS += a20 argufilem bitops bug9010 constfold cov2 ctorpowtests deprecate1 eh eh2
++DISABLED_TESTS += hello-profile inner nested opover2 pi sdtor sieve template9 test11 test12 test23 test34      
++DISABLED_TESTS += test36 test4 test42 testconst testdstress testmodule testsafe tls tls_dup
++DISABLED_TESTS += testsocket testthread variadic xtest46 xtest55  
 +
 +DISABLED_SH_TESTS += test39 test9377
 +                                                                                 
-+DISABLED_CC_TESTS += ddoc12 inlineheader inlinexheader line  
++DISABLED_CC_TESTS += ddoc1 ddoc11 ddoc12 ddoc2630 ddoc2273 ddoc5446 inlineheader inlinexheader line  
++DISABLED_CC_TESTS += ddoc7 header interpret3 json testInference
 +
  ifeq ($(OS),win64)
  DISABLED_TESTS += testargtypes
  DISABLED_TESTS += testxmm
-@@ -155,20 +164,23 @@ $(addsuffix .d.out,$(addprefix $(RESULTS_DIR)/runnable/,$(DISABLED_TESTS))): $(R
+@@ -155,20 +165,23 @@ $(addsuffix .d.out,$(addprefix $(RESULTS_DIR)/runnable/,$(DISABLED_TESTS))): $(R
  $(addsuffix .sh.out,$(addprefix $(RESULTS_DIR)/runnable/,$(DISABLED_SH_TESTS))): $(RESULTS_DIR)/.created
  	$(QUIET) echo " ... $@ - disabled"
  
