@@ -28,3 +28,6 @@ For details about how to compile manually, review the [build.sh](https://github.
 
 Common Issues
 -------------
+
+checking compiler gcc -O2 ... rm: cannot lstat `a.exe': Permission denied
+rm: cannot lstat `a.exe': Permission denied

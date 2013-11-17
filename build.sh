@@ -395,6 +395,7 @@ if [ ! -e cloog-0.18.0/build/.built ]; then
 	  --with-gmp-prefix=/crossdev/gdc-4.8/gmp-4.3.2/32 \
       --with-isl-prefix=/crossdev/gdc-4.8/isl-0.11.1/32 \
 	  CFLAGS="-O2 -m32" CXXFLAGS="-O2 -m32" LDFLAGS="-s -m32"
+	  make && make install
 	cd ../..
 	# Build 64
 	mkdir -p build/64
@@ -411,6 +412,8 @@ if [ ! -e cloog-0.18.0/build/.built ]; then
 	popd
 fi
 
+export GCC_PREFIX="/crossdev/gdc-4.8/release"
+
 # Copy runtime files to release
 mkdir -p $GCC_PREFIX/x86_64-w64-mingw32
 mkdir -p $GCC_PREFIX/x86_64-w64-mingw32/bin32
@@ -422,9 +425,9 @@ MPC_STAGE=/crossdev/gdc-4.8/mpc-1.0.1/
 ISL_STAGE=/crossdev/gdc-4.8/isl-0.11.1/
 CLOOG_STAGE=/crossdev/gdc-4.8/cloog-0.18.0/
 
-cp -Rp $GMP_STAGE/64/bin/* $GCC_PREFIX/bin
-cp -Rp $GMP_STAGE/32/bin/* $GCC_PREFIX/x86_64-w64-mingw32/bin32
-cp -Rp $GMP_STAGE/32/lib/* $GCC_PREFIX/x86_64-w64-mingw32/lib32
+cp -Rp $GMP_STAGE/64/*		$GCC_PREFIX/x86_64-w64-mingw32/
+cp -Rp $GMP_STAGE/32/bin/*	$GCC_PREFIX/x86_64-w64-mingw32/bin32
+cp -Rp $GMP_STAGE/32/lib/*	$GCC_PREFIX/x86_64-w64-mingw32/lib32
 
 cp -Rp $MPFR_STAGE/64/*     $GCC_PREFIX/x86_64-w64-mingw32
 cp -Rp $MPFR_STAGE/32/bin/* $GCC_PREFIX/x86_64-w64-mingw32/bin32
@@ -442,7 +445,7 @@ cp -Rp $CLOOG_STAGE/64/*     $GCC_PREFIX/x86_64-w64-mingw32
 cp -Rp $CLOOG_STAGE/32/bin/* $GCC_PREFIX/x86_64-w64-mingw32/bin32
 cp -Rp $CLOOG_STAGE/32/lib/* $GCC_PREFIX/x86_64-w64-mingw32/lib32
 
-#cp -Rp $GCC_PREFIX/x86_64-w64-mingw32/bin/*.dll $GCC_PREFIX/bin
+cp -Rp $GCC_PREFIX/x86_64-w64-mingw32/bin/*.dll $GCC_PREFIX/bin
 
 
 # Setup GDC and compile
@@ -522,7 +525,6 @@ function build_gdc {
 	make && make install
 	popd
 }
-export GCC_PREFIX="/crossdev/gdc-4.8/release"
 export PATH="$GCC_PREFIX/bin:$PATH"
 build_gdc
 
