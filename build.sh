@@ -26,13 +26,17 @@ root=$(pwd)
 pushd /crossdev/gdc-4.8/src
 
 # Download and install x86-64 build tools
-if [ ! -e "7za920.zip" ]; then
-	wget http://downloads.sourceforge.net/sevenzip/7za920.zip
+if [ ! -e "7za.exe" ]; then
+	if [ ! -e "7za920.zip" ]; then
+		wget http://downloads.sourceforge.net/sevenzip/7za920.zip
+	fi
 	unzip 7za920.zip 7za.exe
 fi
 	
-if [ ! -e "x86_64-4.8.2-release-win32-sjlj-rt_v3-rev0.7z" ]; then
-	wget http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.8.2/threads-win32/sjlj/x86_64-4.8.2-release-win32-sjlj-rt_v3-rev0.7z/download
+if [ ! -d "/crossdev/mingw64" ]; then
+	if [ ! -e "x86_64-4.8.2-release-win32-sjlj-rt_v3-rev0.7z" ]; then
+		wget http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.8.2/threads-win32/sjlj/x86_64-4.8.2-release-win32-sjlj-rt_v3-rev0.7z/download
+	fi
 	7za x -o/crossdev x86_64-4.8.2-release-win32-sjlj-rt_v3-rev0.7z 
 fi
 
