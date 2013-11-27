@@ -1,0 +1,128 @@
+From af630030fd530d9b3942f972cbcae37d7b19bddc Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jernej=20Krempu=C5=A1?= <jkrempus@gmail.com>
+Date: Wed, 27 Nov 2013 02:58:37 -0800
+Subject: [PATCH] Fixes for 64 bit
+
+- fixed linker errors
+- corrected a check for MinGW64 in thread.d (fixes fibers)
+---
+ libphobos/libdruntime/core/sys/windows/mingwasm.S | 12 +++++++-----
+ libphobos/libdruntime/core/thread.d               | 24 +++++++++++++----------
+ libphobos/libdruntime/rt/memory.d                 | 22 +++++++++++++++++----
+ 3 files changed, 39 insertions(+), 19 deletions(-)
+
+diff --git a/libphobos/libdruntime/core/sys/windows/mingwasm.S b/libphobos/libdruntime/core/sys/windows/mingwasm.S
+index 16cf089..730c03b 100644
+--- a/libphobos/libdruntime/core/sys/windows/mingwasm.S
++++ b/libphobos/libdruntime/core/sys/windows/mingwasm.S
+@@ -1,9 +1,9 @@
+ /**
+  * Support code for MinGW fibers.
+  */
+- 	.global	_fiber_switchContext
+-_fiber_switchContext:
+-#if defined(__x86_64__)
++#if defined(__x86_64__) 
++ 	.global	fiber_switchContext
++fiber_switchContext:
+ 	// save current stack state
+     pushq %RBP;
+     movq  %RSP, %RBP;
+@@ -35,7 +35,9 @@ _fiber_switchContext:
+ 	// 'return' to complete switch
+     popq %RCX;
+     jmp *%RCX;
+-#elif defined(__x86__)
++#elif defined(_X86_)
++ 	.global	_fiber_switchContext
++_fiber_switchContext:
+ 	// Save current stack state.save current stack state
+ 	// Standard CDECL prologue.  
+ 	push %EBP;
+@@ -68,4 +70,4 @@ _fiber_switchContext:
+     ret;
+ #else
+ // assert?
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/libphobos/libdruntime/core/thread.d b/libphobos/libdruntime/core/thread.d
+index f9507c7..304deca 100644
+--- a/libphobos/libdruntime/core/thread.d
++++ b/libphobos/libdruntime/core/thread.d
+@@ -14,6 +14,7 @@ module core.thread;
+ 
+ public import core.time; // for Duration
+ static import rt.tlsgc;
++import core.stdc.stdio;
+ 
+ // this should be true for most architectures
+ version( GNU_StackGrowsDown )
+@@ -3188,18 +3189,21 @@ private
+     }
+     else version( GNU_InlineAsm )
+     {
+-        version( MinGW64 )
++        version( MinGW )
+         {
+-            version = GNU_AsmX86_64_Windows;
+-            version = AlignFiberStackTo16Byte;
+-			version = AsmExternal;
++            version( X86_64 )
++            {
++                version = GNU_AsmX86_64_Windows;
++                version = AlignFiberStackTo16Byte;
++                version = AsmExternal;
++            }
++            else
++            {
++                version = GNU_AsmX86_Windows;
++                version = AlignFiberStackTo16Byte;
++                version = AsmExternal;
++            }
+         }
+-        else version( MinGW )
+-        {
+-            version = GNU_AsmX86_Windows;
+-            version = AlignFiberStackTo16Byte;
+-			version = AsmExternal;
+-        } 
+     }	
+     else version( PPC )
+     {
+diff --git a/libphobos/libdruntime/rt/memory.d b/libphobos/libdruntime/rt/memory.d
+index 2e29a0f..e3272fa 100644
+--- a/libphobos/libdruntime/rt/memory.d
++++ b/libphobos/libdruntime/rt/memory.d
+@@ -24,10 +24,24 @@ private
+         {
+             extern __gshared
+             {
+-                int _data_start__;
+-                int _data_end__;
+-                int _bss_start__;
+-                int _bss_end__;
++				// We need to alias __data_*__ and __bss_*__ to correct
++				// symbols on Win64.  Binutils exports the same symbol for
++				// both Win32 and Win64, where-as the ABI says no _ should be
++				// prefixed.
++				version( X86 ) 
++				{
++					int _data_start__;
++					int _data_end__;
++					int _bss_start__;
++					int _bss_end__;
++				} 
++				else version( X86_64 )
++				{
++					pragma(mangle, "__data_start__") int _data_start__;
++					pragma(mangle, "__data_end__") int _data_end__;
++					pragma(mangle, "__bss_start__") int _bss_start__;
++					pragma(mangle, "__bss_end__") int _bss_end__;
++				}
+             }
+         }
+     }
+-- 
+1.8.1.msysgit.1
+
