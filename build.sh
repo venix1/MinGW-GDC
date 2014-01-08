@@ -1,3 +1,12 @@
+# Configuration options
+
+# Which branch to build against
+GDC_BRANCH="gdc-4.8"
+# Force a GDC Revision.  Empty uses head.
+GDC_VERSION="6296cfbe9756572e6d91e83e5d786ce5477fcb1b"
+
+	
+### Build Code
 # Sanity test
 DRIVE=$(pwd -W | cut -c 1)
 mkdir -p /$DRIVE/crossdev/gdc-4.8/src
@@ -480,17 +489,21 @@ function build_gdc {
 	fi
 	# Clone and configure GDC
 	if [ ! -d "GDC" ]; then
-		git clone https://github.com/D-Programming-GDC/GDC.git -b gdc-4.8
+		git clone https://github.com/D-Programming-GDC/GDC.git -b $GDC_BRANCH
 	else
 		cd GDC
-		branch=$(git branch | cut -c3-)
 		git fetch 
-		git reset --hard origin/$branch
+		git reset --hard origin/$GDC_BRANCH
 		git clean -f -d
 		cd ..
 	fi
 	
 	pushd GDC
+	
+	if [ "$GDC_VERSION" != "" ]; then
+		git checkout $GDC_VERSION
+	fi
+	
 	#patch -p1 < $root/patches/mingw-gdc.patch
 	#patch -p1 < $root/patches/mingw-gdc-remove-main-from-dmain2.patch
 	# Should use git am

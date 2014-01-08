@@ -1,0 +1,28 @@
+From 90746c816b2bb6f32160b10904b62421a8678646 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Tue, 7 Jan 2014 23:45:17 -0600
+Subject: [PATCH] cbrt: invalid use of yl2x for Win64/MinGW
+
+---
+ libphobos/src/std/math.d | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/libphobos/src/std/math.d b/libphobos/src/std/math.d
+index ed8118d..1904c08 100644
+--- a/libphobos/src/std/math.d
++++ b/libphobos/src/std/math.d
+@@ -2851,7 +2851,10 @@ real cbrt(real x) @trusted nothrow
+ {
+     version (Win64)
+     {
+-        return copysign(exp2(yl2x(fabs(x), 1.0L/3.0L)), x);
++        version(INLINE_YL2X)
++            return copysign(exp2(yl2x(fabs(x), 1.0L/3.0L)), x);
++        else
++            return core.stdc.math.cbrtl(x);
+     }
+     else
+         return core.stdc.math.cbrtl(x);
+-- 
+1.8.1.msysgit.1
+
