@@ -1,4 +1,4 @@
-From af630030fd530d9b3942f972cbcae37d7b19bddc Mon Sep 17 00:00:00 2001
+From 0289cb5e129193aeac8c6edd86a738b97083b4dc Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Jernej=20Krempu=C5=A1?= <jkrempus@gmail.com>
 Date: Wed, 27 Nov 2013 02:58:37 -0800
 Subject: [PATCH] Fixes for 64 bit
@@ -47,18 +47,18 @@ index 16cf089..730c03b 100644
 \ No newline at end of file
 +#endif
 diff --git a/libphobos/libdruntime/core/thread.d b/libphobos/libdruntime/core/thread.d
-index f9507c7..304deca 100644
+index 69e7f83..2153ddf 100644
 --- a/libphobos/libdruntime/core/thread.d
 +++ b/libphobos/libdruntime/core/thread.d
-@@ -14,6 +14,7 @@ module core.thread;
- 
+@@ -15,6 +15,7 @@ module core.thread;
  public import core.time; // for Duration
+ import core.exception : onOutOfMemoryError;
  static import rt.tlsgc;
 +import core.stdc.stdio;
  
  // this should be true for most architectures
  version( GNU_StackGrowsDown )
-@@ -3188,18 +3189,21 @@ private
+@@ -3073,18 +3074,21 @@ private
      }
      else version( GNU_InlineAsm )
      {
@@ -91,10 +91,10 @@ index f9507c7..304deca 100644
      else version( PPC )
      {
 diff --git a/libphobos/libdruntime/rt/memory.d b/libphobos/libdruntime/rt/memory.d
-index 2e29a0f..e3272fa 100644
+index 324c6d9..ac8d440 100644
 --- a/libphobos/libdruntime/rt/memory.d
 +++ b/libphobos/libdruntime/rt/memory.d
-@@ -24,10 +24,24 @@ private
+@@ -22,10 +22,24 @@ private
          {
              extern __gshared
              {
@@ -124,5 +124,5 @@ index 2e29a0f..e3272fa 100644
          }
      }
 -- 
-1.8.1.msysgit.1
+1.8.5.2.msysgit.0
 

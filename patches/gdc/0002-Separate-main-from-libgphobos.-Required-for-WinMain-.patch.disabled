@@ -1,0 +1,240 @@
+From 723eb61f238a3d2f65ed43342382cb22464ce70f Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Sat, 15 Jun 2013 09:17:28 -0500
+Subject: [PATCH 2/2] Separate main from libgphobos. Required for WinMain/Dll
+ linkage
+
+---
+ gcc/d/d-spec.c                    | 34 ++++++++++++++++++++++++++++++++++
+ gcc/d/lang.opt                    |  5 ++++-
+ libphobos/libdruntime/Makefile.am |  6 ++++++
+ libphobos/libdruntime/Makefile.in | 13 ++++++++++---
+ libphobos/libdruntime/rt/dmain2.d | 36 ++++++++++++++++++++++++++++++++++++
+ 5 files changed, 90 insertions(+), 4 deletions(-)
+
+diff --git a/gcc/d/d-spec.c b/gcc/d/d-spec.c
+index 18f0d18..d62c65b 100644
+--- a/gcc/d/d-spec.c
++++ b/gcc/d/d-spec.c
+@@ -70,6 +70,12 @@
+ #define LIBPHOBOS_PROFILE LIBPHOBOS
+ #endif
+ 
++#ifndef LIBPHOBOS_DMAIN
++#define LIBPHOBOS_DMAIN ":dmain.o"
++#endif
++#ifndef LIBPHOBOS_DMAIN_PROFILE
++#define LIBPHOBOS_DMAIN_PROFILE LIBPHOBOS_DMAIN
++#endif
+ 
+ void
+ lang_specific_driver (cl_decoded_option **in_decoded_options,
+@@ -84,6 +90,10 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
+   /* Used by -debuglib */
+   int saw_debug_flag = 0;
+ 
++  /* Determines if 'dmain.o' should be linked.  This should be set to 0 if
++     an entrypoint other than 'main' is used. */
++  int include_dmain = 1;
++
+   /* What do with libgphobos:
+      -1 means we should not link in libgphobos
+      0  means we should link in libgphobos if it is needed
+@@ -347,6 +357,19 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
+ 
+ 	      break;
+ 	    }
++           
++	/* Options that signify a non main entry point. */
++        case OPT_fno_dmain:
++        case OPT_shared:
++#if TARGET_WINDOS
++        case OPT_mwindows:
++        case OPT_mdll:
++	
++#endif
++	    {
++              include_dmain = 0;
++              break;
++	    }
+ 	}
+     }
+ 
+@@ -467,6 +490,16 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
+   /* Add `-lgphobos' if we haven't already done so.  */
+   if (library > 0 && phobos)
+     {
++      /* Add dmain.o as well. Must be added before phobos to properly resolve
++         symbols. */
++      if (include_dmain)
++      {
++          generate_option (OPT_l, saw_profile_flag ? LIBPHOBOS_DMAIN_PROFILE : LIBPHOBOS_DMAIN, 1,
++                           CL_DRIVER, &new_decoded_options[j]);
++          added_libraries++;
++          j++;
++      }
++
+ #ifdef HAVE_LD_STATIC_DYNAMIC
+       if (library > 1 && !static_link)
+ 	{
+@@ -474,6 +507,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
+ 			   &new_decoded_options[j]);
+ 	  j++;
+ 	}
++
+ #endif
+ 
+       generate_option (OPT_l, saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS, 1,
+diff --git a/gcc/d/lang.opt b/gcc/d/lang.opt
+index 78d6679..1ea2f85 100644
+--- a/gcc/d/lang.opt
++++ b/gcc/d/lang.opt
+@@ -200,6 +200,10 @@ static-libphobos
+ Driver
+ Link the standard D library statically in the compilation
+ 
++fno-dmain
++Driver
++Do not link phobos dmain.o.
++
+ Wall
+ D
+ ; Documented in c.opt
+@@ -219,4 +223,3 @@ D
+ Wunknown-pragmas
+ D
+ ; Documented in c.opt
+-
+diff --git a/libphobos/libdruntime/Makefile.am b/libphobos/libdruntime/Makefile.am
+index bfb3792..0f89658 100644
+--- a/libphobos/libdruntime/Makefile.am
++++ b/libphobos/libdruntime/Makefile.am
+@@ -75,6 +75,10 @@ gcc/cbridge_math.o: gcc/cbridge_math.c
+ 
+ BASE_OBJS=object_.o
+ 
++# These should not be part of libgphobos
++DMAIN_OBJS= rt/dmain.o
++
++
+ RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
+ 	     rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
+ 	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
+@@ -229,6 +233,8 @@ install-exec-local: libgdruntime.a
+ 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
+ 	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
+ 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
++	$(INSTALL) $(DMAIN_OBJS) $(DESTDIR)$(toolexeclibdir)
++
+ 
+ install-data-local: libgdruntime.a
+ 	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)
+diff --git a/libphobos/libdruntime/Makefile.in b/libphobos/libdruntime/Makefile.in
+index 3917f47..3a35a5c 100644
+--- a/libphobos/libdruntime/Makefile.in
++++ b/libphobos/libdruntime/Makefile.in
+@@ -227,6 +227,10 @@ toolexecdir = $(phobos_toolexecdir)
+ toolexeclibdir = $(phobos_toolexeclibdir)
+ SUFFIXES = .d
+ BASE_OBJS = object_.o
++
++# These should not be linked into libgphobos
++DMAIN_OBJS = rt/dmain.o
++
+ RUNTIME_OBJS = rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
+ 	     rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
+ 	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
+@@ -278,7 +282,7 @@ RT_WINDOWS_OBJS = core/sys/windows/dbghelp.o core/sys/windows/dll.o \
+ 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
+ 		core/sys/windows/windows.o core/sys/windows/mingwex.o
+ 
+-
++		
+ # Regardless of OS, all import headers are generated.
+ CORE_IMPORTS = core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
+ 	     core/exception.di core/math.di core/memory.di core/runtime.di \
+@@ -621,7 +625,7 @@ $(IMPDIR)/%.di: %.d $(IMPDIR)
+ gcc/cbridge_math.o: gcc/cbridge_math.c
+ 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fno-strict-aliasing -c $<
+ 
+-libgdruntime.a : $(ALL_DRUNTIME_OBJS) \
++libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(DMAIN_OBJS) \
+ 		 $(subst core/,$(IMPDIR)/core/,$(CORE_IMPORTS)) \
+ 		 $(subst gcc/,$(IMPDIR)/gcc/,$(GCC_IMPORTS))
+ @BACKTRACE_SUPPORTED_TRUE@	cp -f $(LIBBACKTRACE_LIB) $@
+@@ -629,7 +633,7 @@ libgdruntime.a : $(ALL_DRUNTIME_OBJS) \
+ @BACKTRACE_SUPPORTED_FALSE@	$(AR) -r $@ $(ALL_DRUNTIME_OBJS)
+ 	$(RANLIB) $@
+ 
+-libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o)
++libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o) $(DMAIN_OBJS)
+ @BACKTRACE_SUPPORTED_TRUE@	cp -f $(LIBBACKTRACE_LIB) $@
+ @BACKTRACE_SUPPORTED_TRUE@	$(AR) -q $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
+ @BACKTRACE_SUPPORTED_FALSE@	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
+@@ -645,6 +649,8 @@ install-exec-local: libgdruntime.a
+ 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
+ 	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
+ 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
++	$(INSTALL) $(DMAIN_OBJS) $(DESTDIR)$(toolexeclibdir)
++ 
+ 
+ install-data-local: libgdruntime.a
+ 	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)
+@@ -682,6 +688,7 @@ install-data-local: libgdruntime.a
+ clean-local:
+ 	rm -f $(ALL_DRUNTIME_OBJS)
+ 	rm -f $(ALL_DRUNTIME_OBJS:.o=.t.o)
++	rm -f $(DMAIN_OBJS)
+ 	rm -f $(CORE_IMPORTS)
+ 	rm -f $(GCC_IMPORTS)
+ 	rm -rf $(IMPDIR)
+diff --git a/libphobos/libdruntime/rt/dmain2.d b/libphobos/libdruntime/rt/dmain2.d
+index 132b580..1805baa 100644
+--- a/libphobos/libdruntime/rt/dmain2.d
++++ b/libphobos/libdruntime/rt/dmain2.d
+@@ -240,6 +240,42 @@ extern (C) CArgs rt_cArgs()
+ }
+ 
+ /***********************************
++<<<<<<< HEAD
++=======
++ * The D main() function supplied by the user's program
++ *
++ * It always has `_Dmain` symbol name and uses C calling convention.
++ * But DMD frontend returns its type as `extern(D)` because of Issue @@@9028@@@.
++ * As we need to deal with actual calling convention we have to mark it
++ * as `extern(C)` and use its symbol name.
++ */
++extern(C) int _Dmain(char[][] args);
++alias extern(C) int function(char[][] args) MainFunc;
++
++/***********************************
++ * Substitutes for the C main() function.
++ * Just calls into d_run_main with the default main function.
++ * Applications are free to implement their own
++ * main function and call the _d_run_main function
++ * themselves with any main function.
++ */
++/+ Handled by dmain.o
++extern (C) int main(int argc, char **argv)
++{
++    return _d_run_main(argc, argv, &_Dmain);
++}
+++/
++
++version (Solaris) extern (C) int _main(int argc, char** argv)
++{
++    // This is apparently needed on Solaris because the
++    // C tool chain seems to expect the main function
++    // to be called _main. It needs both not just one!
++    return main(argc, argv);
++}
++
++/***********************************
++>>>>>>> Separate main from libgphobos. Required for WinMain/Dll linkage
+  * Run the given main function.
+  * Its purpose is to wrap the D main()
+  * function and catch any unhandled exceptions.
+-- 
+1.8.5.2.msysgit.0
+

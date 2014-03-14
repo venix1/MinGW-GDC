@@ -1,39 +1,22 @@
-From 5ab957378b4920e2271e8826c609b4ad4139523c Mon Sep 17 00:00:00 2001
+From 597d4ffdc768d80d299f08e4bf5941017d15367f Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Fri, 21 Jun 2013 17:27:36 -0500
-Subject: [PATCH 03/18] MinGW TLS Support
+Subject: [PATCH] MinGW TLS Support
 
 ---
- gcc/d/d-objfile.cc                                |   5 +-
  libphobos/libdruntime/Makefile.am                 |   3 +-
  libphobos/libdruntime/Makefile.in                 |   3 +-
  libphobos/libdruntime/core/sys/windows/dll.d      |  12 +-
  libphobos/libdruntime/core/sys/windows/mingwasm.S |  35 +++++
- libphobos/libdruntime/core/thread.d               | 163 +++++++++++++++++++++-
- 6 files changed, 212 insertions(+), 9 deletions(-)
+ libphobos/libdruntime/core/thread.d               | 148 +++++++++++++++++++++-
+ 5 files changed, 194 insertions(+), 7 deletions(-)
  create mode 100644 libphobos/libdruntime/core/sys/windows/mingwasm.S
 
-diff --git a/gcc/d/d-objfile.cc b/gcc/d/d-objfile.cc
-index ec68682..d9d76c4 100644
---- a/gcc/d/d-objfile.cc
-+++ b/gcc/d/d-objfile.cc
-@@ -1657,7 +1657,10 @@ d_finish_function (FuncDeclaration *f)
-   gcc_assert (TREE_CODE (t) == FUNCTION_DECL);
- 
-   // Write out _tlsstart/_tlsend.
--  if (f->isMain() || f->isWinMain() || f->isDllMain())
-+  // For MinGW we alias _tls_start and _tls_end.  Otherwise we have an offset
-+  // that could result in memory corruption.  As well as alignment issues for
-+  // the GC.
-+  if (f->isMain() || f->isWinMain() || f->isDllMain() && !TARGET_WINDOS)
-     build_tlssections();
- 
-   if (s->prettyIdent)
 diff --git a/libphobos/libdruntime/Makefile.am b/libphobos/libdruntime/Makefile.am
-index bfc8b0d..7f2da74 100644
+index b34dbb7..928feb7 100644
 --- a/libphobos/libdruntime/Makefile.am
 +++ b/libphobos/libdruntime/Makefile.am
-@@ -116,7 +116,8 @@ RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o \
+@@ -129,7 +129,8 @@ RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o \
  
  RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
  		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
@@ -41,13 +24,13 @@ index bfc8b0d..7f2da74 100644
 +		core/sys/windows/windows.o core/sys/windows/mingwex.o \
 +		core/sys/windows/mingwasm.o
  
- # This should not be linked into a shared library.
- CMAIN_OBJS= rt/dmain.o
+ D_GC_MODULES=@D_GC_MODULES@
+ 
 diff --git a/libphobos/libdruntime/Makefile.in b/libphobos/libdruntime/Makefile.in
-index 2078b61..41a2c1c 100644
+index 74ea001..04d11e4 100644
 --- a/libphobos/libdruntime/Makefile.in
 +++ b/libphobos/libdruntime/Makefile.in
-@@ -274,7 +274,8 @@ RT_POSIX_OBJS = core/sys/posix/dirent.o core/sys/posix/netdb.o \
+@@ -276,7 +276,8 @@ RT_POSIX_OBJS = core/sys/posix/dirent.o core/sys/posix/netdb.o \
  
  RT_WINDOWS_OBJS = core/sys/windows/dbghelp.o core/sys/windows/dll.o \
  		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
@@ -56,7 +39,7 @@ index 2078b61..41a2c1c 100644
 +		core/sys/windows/mingwasm.o
  
  
- # This should not be linked into a shared library.
+ # Regardless of OS, all import headers are generated.
 diff --git a/libphobos/libdruntime/core/sys/windows/dll.d b/libphobos/libdruntime/core/sys/windows/dll.d
 index 1a6e2bf..b608bb4 100644
 --- a/libphobos/libdruntime/core/sys/windows/dll.d
@@ -122,31 +105,10 @@ index 0000000..49b5918
 +    // 'return' to complete switch
 +    ret;
 diff --git a/libphobos/libdruntime/core/thread.d b/libphobos/libdruntime/core/thread.d
-index ba88300..f9507c7 100644
+index 3d858af..2ec7a13 100644
 --- a/libphobos/libdruntime/core/thread.d
 +++ b/libphobos/libdruntime/core/thread.d
-@@ -315,6 +315,20 @@ else version( Posix )
-                 alias _tlsstart _tlsend;
-             }
-         }
-+        else version( MinGW)
-+        {
-+            // NOTE: The memory between the addresses of _tls_start and _tls_end
-+            //       is the storage for thread-local data in MinGW.  Both of
-+            //       these are defined in tlssup.c.
-+            extern (C)
-+            {
-+                extern int _tls_start;
-+                extern int _tls_end;
-+            }
-+            
-+            alias _tls_start _tlsstart;
-+            alias _tls_end _tlsend;
-+        }
-         else version( GNU )
-         {
-             extern (C)
-@@ -3172,6 +3186,21 @@ private
+@@ -3069,6 +3069,21 @@ private
              version = AlignFiberStackTo16Byte;
          }
      }
@@ -168,15 +130,7 @@ index ba88300..f9507c7 100644
      else version( PPC )
      {
          version( Posix )
-@@ -3273,7 +3302,6 @@ private
-         obj.switchOut();
-     }
- 
--
-   version( AsmExternal )
-     extern (C) void fiber_switchContext( void** oldp, void* newp );
-   else
-@@ -3425,10 +3453,99 @@ private
+@@ -3337,10 +3352,99 @@ private
                  jmp RCX;
              }
          }
@@ -278,9 +232,9 @@ index ba88300..f9507c7 100644
          else static if( __traits( compiles, ucontext_t ) )
          {
              Fiber   cfib = Fiber.getThis();
-@@ -4256,9 +4373,45 @@ private:
-             pstack -= ABOVE;
-             *cast(size_t*)(pstack - SZ_RA) = cast(size_t)&fiber_entryPoint;
+@@ -4332,9 +4436,45 @@ private:
+              */
+             pstack += int.sizeof * 1;
          }
 -        else version(MinGW)
 +        else version( GNU_AsmX86_Windows )
@@ -327,5 +281,5 @@ index ba88300..f9507c7 100644
          else static if( __traits( compiles, ucontext_t ) )
          {
 -- 
-1.8.1.msysgit.1
+1.8.5.2.msysgit.0
 

@@ -1,0 +1,25 @@
+From b2141709cd7fa25dd0c1db07c3adb479f37de129 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Wed, 12 Mar 2014 00:34:28 -0500
+Subject: [PATCH] BUG: extern gets marked as secrel32(TLS)
+
+---
+ libphobos/libdruntime/gcc/gthreads/win32.d | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libphobos/libdruntime/gcc/gthreads/win32.d b/libphobos/libdruntime/gcc/gthreads/win32.d
+index 191a794..0a98136 100644
+--- a/libphobos/libdruntime/gcc/gthreads/win32.d
++++ b/libphobos/libdruntime/gcc/gthreads/win32.d
+@@ -67,7 +67,7 @@ version (MinGW)
+ {
+   // Mingw runtime >= v0.3 provides a magic variable that is set to nonzero
+   // if -mthreads option was specified, or 0 otherwise.
+-  extern int _CRT_MT;
++  extern __gshared int _CRT_MT;
+   extern int __mingwthr_key_dtor(ULONG, void function(void*));
+ }
+ 
+-- 
+1.8.5.2.msysgit.0
+

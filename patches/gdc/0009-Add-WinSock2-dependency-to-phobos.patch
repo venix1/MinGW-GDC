@@ -1,18 +1,18 @@
-From 421aefb6c1de2600a2746b2f822d496008734bcb Mon Sep 17 00:00:00 2001
+From 3dace856e8d400cdd18fec335a1f4540f3af92ca Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sat, 22 Jun 2013 06:45:55 -0500
-Subject: [PATCH 09/18] Add WinSock2 dependency to phobos
+Subject: [PATCH 11/11] Add WinSock2 dependency to phobos
 
 ---
- gcc/d/d-spec.c | 36 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 36 insertions(+)
+ gcc/d/d-spec.c | 36 +++++++++++++++++++++++++++++++++++-
+ 1 file changed, 35 insertions(+), 1 deletion(-)
 
 diff --git a/gcc/d/d-spec.c b/gcc/d/d-spec.c
-index a5212d4..1298086 100644
+index 18f0d18..f19d960 100644
 --- a/gcc/d/d-spec.c
 +++ b/gcc/d/d-spec.c
 @@ -40,6 +40,8 @@
- #define D_SOURCE_FILE	(1<<7)
+ #define WITHLIBC	(1<<6)
  /* This bit is set when the argument should not be passed to gcc or the backend */
  #define SKIPOPT		(1<<8)
 +/* This bit is set if they did `-lws2_32'.  */
@@ -20,32 +20,41 @@ index a5212d4..1298086 100644
  
  #ifndef MATH_LIBRARY
  #define MATH_LIBRARY "m"
-@@ -69,6 +71,13 @@
- #define USE_PTHREADS	1
+@@ -63,6 +65,14 @@
+ #define LIBSTDCXX_PROFILE LIBSTDCXX
  #endif
  
-+/* mingw phobos has a dependency on -lws2_32 */
-+#if TARGET_WINDOS
-+#define NEED_WINSOCK2 1
-+#else
-+#define NEED_WINSOCK2 0
++#ifndef LIBWS2_32
++#define LIBWS2_32 "ws2_32"
++#endif
++#ifndef LIBWS2_32_PROFILE
++#define LIBWS2_32_PROFILE LIBWS2_32
 +#endif
 +
++
+ #ifndef LIBPHOBOS
+ #define LIBPHOBOS "gphobos"
+ #endif
+@@ -70,7 +80,6 @@
+ #define LIBPHOBOS_PROFILE LIBPHOBOS
+ #endif
+ 
+-
  void
- lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ lang_specific_driver (cl_decoded_option **in_decoded_options,
  		      unsigned int *in_decoded_options_count,
-@@ -113,6 +122,9 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+@@ -111,6 +120,9 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
  
    /* "-lrt" if it appears on the command line.  */
-   const struct cl_decoded_option *saw_librt = 0;
+   const cl_decoded_option *saw_time = 0;
 +  
 +  /* "-lws2_32" if it appears on the command line.  */
-+  const struct cl_decoded_option *saw_libws2_32 = 0;  
++  const cl_decoded_option *saw_libws2_32 = 0;  
  
    /* "-lc" if it appears on the command line.  */
-   const struct cl_decoded_option *saw_libc = 0;
-@@ -230,6 +242,8 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
- 	    args[i] |= TIMERLIB;
+   const cl_decoded_option *saw_libc = 0;
+@@ -245,6 +257,8 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
+ 	    }
  	  else if (strcmp (arg, "c") == 0)
  	    args[i] |= WITHLIBC;
 +      else if (strcmp (arg, "ws2_32") == 0)
@@ -53,7 +62,7 @@ index a5212d4..1298086 100644
  	  else
  	    /* Unrecognized libraries (e.g. -ltango) may require libphobos.  */
  	    library = (library == 0) ? 1 : library;
-@@ -392,6 +406,12 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+@@ -412,6 +426,12 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
  	  --j;
  	  saw_libc = &decoded_options[i];
  	}
@@ -64,29 +73,9 @@ index a5212d4..1298086 100644
 +      saw_libws2_32 = &decoded_options[i];
 +    }	
  
-       if (args[i] & D_SOURCE_FILE)
+       if (!saw_libcxx && (args[i] & WITHLIBCXX) && library > 0)
  	{
-@@ -475,6 +495,19 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
- 	}
- #endif
- 
-+      if (saw_libws2_32)
-+    new_decoded_options[j++] = *saw_libws2_32;
-+#if NEED_WINSOCK2
-+    /* Phobos has a dependency on -lws2_32 */
-+      else
-+    {
-+      generate_option (OPT_l, "ws2_32", 1, CL_DRIVER,
-+	                   &new_decoded_options[j]);
-+      added_libraries++;
-+      j++;
-+    }
-+#endif
-+
- #if USE_PTHREADS
-       /* When linking libphobos statically we also need to link with the
- 	 pthread library.  */
-@@ -533,6 +566,9 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+@@ -547,6 +578,9 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
  
    if (saw_libc)
      new_decoded_options[j++] = *saw_libc;
@@ -97,5 +86,5 @@ index a5212d4..1298086 100644
    if (shared_libgcc && !static_link)
      {
 -- 
-1.8.1.msysgit.1
+1.8.5.2.msysgit.0
 

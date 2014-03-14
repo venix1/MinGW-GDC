@@ -1,20 +1,20 @@
-From 81137e50b5e4ef3297909eef4726160da732a699 Mon Sep 17 00:00:00 2001
+From c67edef06cfe75ffc71edccb6d0e1b3a3c04081d Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sat, 22 Jun 2013 07:16:41 -0500
-Subject: [PATCH 14/18] Make ClassInfo DLL_IMPORT & DLL_EXPORT
+Subject: [PATCH] Make ClassInfo DLL_IMPORT & DLL_EXPORT
 
 ---
- gcc/d/d-decls.cc | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ gcc/d/d-decls.cc | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
 diff --git a/gcc/d/d-decls.cc b/gcc/d/d-decls.cc
-index 938b2b1..a1d149b 100644
+index 052dccf..d45a14d 100644
 --- a/gcc/d/d-decls.cc
 +++ b/gcc/d/d-decls.cc
-@@ -624,6 +624,17 @@ Module::toSymbol (void)
-       // Not readonly, moduleinit depends on this.
-       TREE_CONSTANT (decl) = 0;
-       TREE_READONLY (decl) = 0;
+@@ -586,6 +586,17 @@ Module::toSymbol (void)
+ 	}
+ 
+       csym->ScontextDecl = module;
 +
 +#if TARGET_WINDOS && TARGET_DLLIMPORT_DECL_ATTRIBUTES
 +      // Have to test for import first
@@ -30,5 +30,5 @@ index 938b2b1..a1d149b 100644
  
    return csym;
 -- 
-1.8.1.msysgit.1
+1.8.5.2.msysgit.0
 

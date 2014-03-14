@@ -1,14 +1,14 @@
-From 9278a9660acff57472725a31d75bc8f26e19dee7 Mon Sep 17 00:00:00 2001
+From 3911c01877ad3e0643e6682fd9e7f079450528b1 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sat, 22 Jun 2013 07:12:32 -0500
-Subject: [PATCH 12/18] Phobos COM requires libuuid
+Subject: [PATCH] Phobos COM requires libuuid
 
 ---
- gcc/d/d-spec.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+ gcc/d/d-spec.c | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
 
 diff --git a/gcc/d/d-spec.c b/gcc/d/d-spec.c
-index 1298086..6f7c82d 100644
+index f19d960..86470bd 100644
 --- a/gcc/d/d-spec.c
 +++ b/gcc/d/d-spec.c
 @@ -42,6 +42,8 @@
@@ -20,17 +20,17 @@ index 1298086..6f7c82d 100644
  
  #ifndef MATH_LIBRARY
  #define MATH_LIBRARY "m"
-@@ -125,6 +127,9 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+@@ -123,6 +125,9 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
    
    /* "-lws2_32" if it appears on the command line.  */
-   const struct cl_decoded_option *saw_libws2_32 = 0;  
+   const cl_decoded_option *saw_libws2_32 = 0;  
 +  
 +  /* "-luuid" if it appears on the command line.  */
-+  const struct cl_decoded_option *saw_libuuid = 0;    
++  const cl_decoded_option *saw_libuuid = 0;    
  
    /* "-lc" if it appears on the command line.  */
-   const struct cl_decoded_option *saw_libc = 0;
-@@ -244,6 +249,8 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+   const cl_decoded_option *saw_libc = 0;
+@@ -259,6 +264,8 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
  	    args[i] |= WITHLIBC;
        else if (strcmp (arg, "ws2_32") == 0)
          args[i] |= WITHLIBWS2_32;		
@@ -39,7 +39,7 @@ index 1298086..6f7c82d 100644
  	  else
  	    /* Unrecognized libraries (e.g. -ltango) may require libphobos.  */
  	    library = (library == 0) ? 1 : library;
-@@ -412,6 +419,12 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+@@ -432,6 +439,12 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
        --j;
        saw_libws2_32 = &decoded_options[i];
      }	
@@ -50,28 +50,18 @@ index 1298086..6f7c82d 100644
 +      saw_libuuid = &decoded_options[i];
 +    }	
  
-       if (args[i] & D_SOURCE_FILE)
+       if (!saw_libcxx && (args[i] & WITHLIBCXX) && library > 0)
  	{
-@@ -508,6 +521,19 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
-     }
- #endif
- 
-+      if (saw_libuuid)
-+    new_decoded_options[j++] = *saw_libuuid;
-+#if TARGET_WINDOWS
-+    /* Phobos COM depend on libuuid.a */
-+      else if (saw_libuuid && library > 0)
-+    {
-+      generate_option (OPT_l, "uuid", 1, CL_DRIVER,
-+                       &new_decoded_options[j]);
-+      added_libraries++;
-+      j++;        
-+    }
-+#endif
+@@ -579,6 +592,9 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
+   
+   if (saw_libws2_32)
+     new_decoded_options[j++] = *saw_libws2_32;
 +
- #if USE_PTHREADS
-       /* When linking libphobos statically we also need to link with the
- 	 pthread library.  */
++  if (saw_libuuid)
++    new_decoded_options[j++] = *saw_libuuid;
+ 
+   if (shared_libgcc && !static_link)
+     {
 -- 
-1.8.1.msysgit.1
+1.8.5.2.msysgit.0
 

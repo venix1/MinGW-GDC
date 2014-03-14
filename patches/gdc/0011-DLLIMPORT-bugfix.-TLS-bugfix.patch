@@ -29,15 +29,6 @@ index 733a5d2..73eb47e 100644
          DECL_DLLIMPORT_P(s->Stree) = 1;
        }
      }
-@@ -1677,7 +1677,7 @@ d_finish_function (FuncDeclaration *f)
-   // For MinGW we alias _tls_start and _tls_end.  Otherwise we have an offset
-   // that could result in memory corruption.  As well as alignment issues for
-   // the GC.
--  if (f->isMain() || f->isWinMain() || f->isDllMain() && !TARGET_WINDOS)
-+  if (!TARGET_WINDOS && (f->isMain() || f->isWinMain() || f->isDllMain()))
-     build_tlssections();
- 
-   if (s->prettyIdent)
 -- 
 1.8.1.msysgit.1
 

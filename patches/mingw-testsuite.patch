@@ -1,5 +1,5 @@
 diff --git a/test/Makefile b/test/Makefile
-index 8c4714f..2187555 100644
+index a4d5128..91b0388 100644
 --- a/test/Makefile
 +++ b/test/Makefile
 @@ -99,11 +99,11 @@ export REQUIRED_ARGS=
@@ -17,50 +17,74 @@ index 8c4714f..2187555 100644
  # bug in vim syntax hilighting, needed to kick it back into life: ')
  else
  export ARGS=-inline -release -gc -O -unittest -fPIC
-@@ -130,6 +130,16 @@ DISABLED_TESTS += test17
+@@ -130,9 +130,22 @@ DISABLED_TESTS += test17
  DISABLED_SH_TESTS += test39
  endif
  
-+DISABLED_TESTS += a20 argufilem bitops bug9010 constfold cov2 ctorpowtests deprecate1 eh eh2
-+DISABLED_TESTS += hello-profile inner nested opover2 pi sdtor sieve template9 test11 test12 test23 test34      
-+DISABLED_TESTS += test36 test4 test42 testconst testdstress testmodule testsafe tls tls_dup
-+DISABLED_TESTS += testsocket testthread variadic xtest46 xtest55  
-+
++DISABLED_TESTS += a20 argufilem arrayop bitops bug9010 constfold cov2 cppa cppmangle1 ctorpowtests
++DISABLED_TESTS += eh hello-profile mangle nested sdtor sieve test17 test23 test34 test36 test4
++DISABLED_TESTS += test42 test8544 testbounds testdstress testkeyword testmain testmodule testsafe
++DISABLED_TESTS += testscope testsocket testswitch testthread
++#DISABLED_TESTS += variadic xtest46 xtest55 tls tls_dup
 +DISABLED_SH_TESTS += test39 test9377
-+                                                                                 
-+DISABLED_CC_TESTS += ddoc1 ddoc11 ddoc12 ddoc2630 ddoc2273 ddoc5446 inlineheader inlinexheader line  
-+DISABLED_CC_TESTS += ddoc7 header interpret3 json testInference
++
++DISABLED_CC_TESTS += compile1 ddoc10236 ddoc10236b ddoc10334 ddoc12 ddoc4899 diag10768 header                                                      
++DISABLED_CC_TESTS += inlineheader inlinexheader line sw_transition_field sw_transition_tls
++DISABLED_CC_TESTS += testlibmain xheader aacmp10381 bug4283 bug8891 circ10280 class1 class2
++DISABLED_CC_TESTS += ctfe10989 ctfe10995 depmsg
++
 +
  ifeq ($(OS),win64)
- DISABLED_TESTS += testargtypes
- DISABLED_TESTS += testxmm
-@@ -155,20 +165,23 @@ $(addsuffix .d.out,$(addprefix $(RESULTS_DIR)/runnable/,$(DISABLED_TESTS))): $(R
+-DISABLED_TESTS += testargtypes
+-DISABLED_TESTS += testxmm
++#DISABLED_TESTS += testargtypes
++#DISABLED_TESTS += testxmm
+ endif
+ 
+ runnable_tests=$(wildcard runnable/*.d) $(wildcard runnable/*.sh)
+@@ -149,27 +162,30 @@ all: run_tests
+ $(addsuffix .d.out,$(addprefix $(RESULTS_DIR)/runnable/,$(DISABLED_TESTS))): $(RESULTS_DIR)/.created
+ 	$(QUIET) echo " ... $@ - disabled"
+ 
++$(addsuffix .d.out,$(addprefix $(RESULTS_DIR)/compilable/,$(DISABLED_CC_TESTS))): $(RESULTS_DIR)/.created
++	$(QUIET) echo " ... $@ - disabled"
++
  $(addsuffix .sh.out,$(addprefix $(RESULTS_DIR)/runnable/,$(DISABLED_SH_TESTS))): $(RESULTS_DIR)/.created
  	$(QUIET) echo " ... $@ - disabled"
  
 -$(RESULTS_DIR)/runnable/%.d.out: runnable/%.d $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test $(DMD)
-+$(addsuffix .d.out,$(addprefix $(RESULTS_DIR)/compilable/,$(DISABLED_CC_TESTS))): $(RESULTS_DIR)/.created
-+	$(QUIET) echo " ... $@ - disabled"
-+
 +$(RESULTS_DIR)/runnable/%.d.out: runnable/%.d $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test
- 	$(QUIET) ./$(RESULTS_DIR)/d_do_test $(<D) $* d
+ 	$(QUIET) $(RESULTS_DIR)/d_do_test $(<D) $* d
  
 -$(RESULTS_DIR)/runnable/%.sh.out: runnable/%.sh $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test $(DMD)
-+$(RESULTS_DIR)/runnable/%.sh.out: runnable/%.sh $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test
++$(RESULTS_DIR)/runnable/%.sh.out: runnable/%.sh $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test 
  	$(QUIET) echo " ... $(<D)/$*.sh"
  	$(QUIET) ./$(<D)/$*.sh
  
 -$(RESULTS_DIR)/compilable/%.d.out: compilable/%.d $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test $(DMD)
-+$(RESULTS_DIR)/compilable/%.d.out: compilable/%.d $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test
- 	$(QUIET) ./$(RESULTS_DIR)/d_do_test $(<D) $* d
++$(RESULTS_DIR)/compilable/%.d.out: compilable/%.d $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test 
+ 	$(QUIET) $(RESULTS_DIR)/d_do_test $(<D) $* d
+ 
+-$(RESULTS_DIR)/compilable/%.sh.out: compilable/%.sh $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test $(DMD)
++$(RESULTS_DIR)/compilable/%.sh.out: compilable/%.sh $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test 
+ 	$(QUIET) echo " ... $(<D)/$*.sh"
+ 	$(QUIET) ./$(<D)/$*.sh
  
 -$(RESULTS_DIR)/fail_compilation/%.d.out: fail_compilation/%.d $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test $(DMD)
--	$(QUIET) ./$(RESULTS_DIR)/d_do_test $(<D) $* d
-+$(RESULTS_DIR)/fail_compilation/%.d.out: fail_compilation/%.d $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test
-+	#$(QUIET) ./$(RESULTS_DIR)/d_do_test $(<D) $* d
++$(RESULTS_DIR)/fail_compilation/%.d.out: fail_compilation/%.d $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test 
+ 	$(QUIET) $(RESULTS_DIR)/d_do_test $(<D) $* d
  
 -$(RESULTS_DIR)/fail_compilation/%.html.out: fail_compilation/%.html $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test $(DMD)
-+$(RESULTS_DIR)/fail_compilation/%.html.out: fail_compilation/%.html $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test
- 	$(QUIET) ./$(RESULTS_DIR)/d_do_test $(<D) $* html
++$(RESULTS_DIR)/fail_compilation/%.html.out: fail_compilation/%.html $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test 
+ 	$(QUIET) $(RESULTS_DIR)/d_do_test $(<D) $* html
  
  quick:
+@@ -205,7 +221,7 @@ run_fail_compilation_tests: $(fail_compilation_test_results)
+ 
+ start_fail_compilation_tests: $(RESULTS_DIR)/.created $(RESULTS_DIR)/d_do_test
+ 	@echo "Running fail compilation tests"
+-	$(QUIET)$(MAKE) --no-print-directory run_fail_compilation_tests
++	#$(QUIET)$(MAKE) --no-print-directory run_fail_compilation_tests
+ 
+ $(RESULTS_DIR)/d_do_test: d_do_test.d $(RESULTS_DIR)/.created
+ 	@echo "Building d_do_test tool"

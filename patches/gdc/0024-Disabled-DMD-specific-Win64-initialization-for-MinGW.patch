@@ -1,0 +1,26 @@
+From 772a722a4d05b86ceee0866607e062156d43ec33 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Thu, 6 Feb 2014 12:33:51 -0600
+Subject: [PATCH] Disabled DMD specific Win64 initialization for MinGW
+
+---
+ libphobos/libdruntime/rt/dmain2.d | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libphobos/libdruntime/rt/dmain2.d b/libphobos/libdruntime/rt/dmain2.d
+index 132b580..1fce4a5 100644
+--- a/libphobos/libdruntime/rt/dmain2.d
++++ b/libphobos/libdruntime/rt/dmain2.d
+@@ -279,7 +279,8 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
+         }
+     }
+ 
+-    version (Win64)
++	version (MinGW) { }
++	else version (Win64)
+     {
+         auto fp = __iob_func();
+         stdin = &fp[0];
+-- 
+1.8.5.2.msysgit.0
+

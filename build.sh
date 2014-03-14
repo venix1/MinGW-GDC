@@ -2,8 +2,9 @@
 
 # Which branch to build against
 GDC_BRANCH="gdc-4.8"
-# Force a GDC Revision.  Empty uses head.
-GDC_VERSION="6296cfbe9756572e6d91e83e5d786ce5477fcb1b"
+
+# Force a GDC Revision.  Empty/undefined uses head.
+#GDC_VERSION="6296cfbe9756572e6d91e83e5d786ce5477fcb1b"
 
 	
 ### Build Code
@@ -507,9 +508,9 @@ function build_gdc {
 	#patch -p1 < $root/patches/mingw-gdc.patch
 	#patch -p1 < $root/patches/mingw-gdc-remove-main-from-dmain2.patch
 	# Should use git am
-	for patch in $(find $root/patches/gdc -type f ); do
+	for patch in $(find $root/patches/gdc -type f -name '*.patch'); do
 		echo "Patching $patch"
-		git am $patch || exit
+		git am -3 --ignore-whitespace $patch || exit
 	done
 	./setup-gcc.sh ../gcc-4.8.1
 	popd
@@ -540,9 +541,18 @@ function build_gdc {
 	  --with-bugurl="http://gdcproject.org/bugzilla/" \
 	  --disable-shared --disable-bootstrap
 	make && make install
+	
+	# Compile 32-bit libgphobos manually due to bug
+	cd x86_64-w64-mingw32/32/libphobos/
+	make && make install
+
 	popd
 }
+#export GCC_PREFIX="/crossdev/gdc-4.8/release"
+#export PATH=/crossdev/mingw64/bin:$PATH
 export PATH="$GCC_PREFIX/bin:$PATH"
+#export LPATH="$GCC_PREFIX/lib;$GCC_PREFIX/x86_64-w64-mingw32/lib"
+#export CPATH="$GCC_PREFIX/include;$GCC_PREFIX/x86_64-w64-mingw32/include"
 build_gdc
 
 # get DMD script
@@ -574,7 +584,7 @@ fi
 # Run testsuite via dmd
 echo "dmd cloning"
 if [ ! -d "dmd" ]; then
-	git clone https://github.com/D-Programming-Language/dmd.git -b 2.062
+	git clone https://github.com/D-Programming-Language/dmd.git -b 2.064
 else
 	cd dmd
 	git reset --hard
