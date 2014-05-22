@@ -1,30 +1,23 @@
-From 3a1b65ee30c976a1592f8655762afc98f09a9af6 Mon Sep 17 00:00:00 2001
+From 3f331442301b2fb2b1a545dd424bceda87809b8e Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sun, 8 Sep 2013 10:31:39 -0500
 Subject: [PATCH] This needs splitting
 
 ---
- gcc/d/d-ctype.cc                                   |  5 ++
- gcc/d/dfrontend/mtype.c                            |  3 ++
- libphobos/libdruntime/Makefile.am                  |  2 +-
- libphobos/libdruntime/Makefile.in                  |  2 +-
- libphobos/libdruntime/core/sys/posix/sys/wait.d    |  2 +-
- libphobos/libdruntime/core/sys/windows/dll.d       | 16 +++---
- libphobos/libdruntime/core/sys/windows/threadaux.d | 37 +++++++++-----
- libphobos/libdruntime/core/thread.d                | 38 ++++++++++++++
- libphobos/libdruntime/rt/dmain2.d                  |  6 +++
- libphobos/src/Makefile.am                          |  2 +-
- libphobos/src/Makefile.in                          |  2 +-
- libphobos/src/std/outbuffer.d                      | 14 +++++-
- libphobos/src/std/stream.d                         | 11 +++-
- setup-gcc.sh                                       | 58 ++++++++++++----------
- 14 files changed, 148 insertions(+), 50 deletions(-)
+ gcc/d/d-ctype.cc                    |  5 ++++
+ libphobos/libdruntime/Makefile.am   |  2 +-
+ libphobos/libdruntime/Makefile.in   |  2 +-
+ libphobos/libdruntime/core/thread.d |  4 +++
+ libphobos/src/std/outbuffer.d       | 14 ++++++++-
+ libphobos/src/std/stream.d          | 11 ++++++-
+ setup-gcc.sh                        | 58 +++++++++++++++++++++----------------
+ 7 files changed, 67 insertions(+), 29 deletions(-)
 
 diff --git a/gcc/d/d-ctype.cc b/gcc/d/d-ctype.cc
-index b3df355..a9d1ec3 100644
+index 4b0b1ca..fb217af 100644
 --- a/gcc/d/d-ctype.cc
 +++ b/gcc/d/d-ctype.cc
-@@ -393,6 +393,11 @@ TypeFunction::toCtype (void)
+@@ -394,6 +394,11 @@ TypeFunction::toCtype (void)
  	    case LINKc:
  	    case LINKcpp:
  	    case LINKd:
@@ -36,24 +29,8 @@ index b3df355..a9d1ec3 100644
  	      break;
  
  	    default:
-diff --git a/gcc/d/dfrontend/mtype.c b/gcc/d/dfrontend/mtype.c
-index 2484d64..2aed4fd 100644
---- a/gcc/d/dfrontend/mtype.c
-+++ b/gcc/d/dfrontend/mtype.c
-@@ -2305,8 +2305,11 @@ Identifier *Type::getTypeInfoIdent(int internal)
-     assert(strlen(name) < namelen);     // don't overflow the buffer
- 
-     size_t off = 0;
-+// MinGW needs the '_'
-+#if !defined(__MINGW32__)
-     if (global.params.isOSX || global.params.isWindows && !global.params.is64bit)
-         ++off;                 // C mangling will add '_' back in
-+#endif
-     Identifier *id = Lexer::idPool(name + off);
- 
-     if (name != namebuf)
 diff --git a/libphobos/libdruntime/Makefile.am b/libphobos/libdruntime/Makefile.am
-index 7d2d17f..bfb3792 100644
+index 2f0c338..b34dbb7 100644
 --- a/libphobos/libdruntime/Makefile.am
 +++ b/libphobos/libdruntime/Makefile.am
 @@ -129,7 +129,7 @@ RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o \
@@ -66,7 +43,7 @@ index 7d2d17f..bfb3792 100644
  D_GC_MODULES=@D_GC_MODULES@
  
 diff --git a/libphobos/libdruntime/Makefile.in b/libphobos/libdruntime/Makefile.in
-index c013edb..3917f47 100644
+index a74c7d2..74ea001 100644
 --- a/libphobos/libdruntime/Makefile.in
 +++ b/libphobos/libdruntime/Makefile.in
 @@ -276,7 +276,7 @@ RT_POSIX_OBJS = core/sys/posix/dirent.o core/sys/posix/netdb.o \
@@ -78,163 +55,11 @@ index c013edb..3917f47 100644
  
  
  # Regardless of OS, all import headers are generated.
-diff --git a/libphobos/libdruntime/core/sys/posix/sys/wait.d b/libphobos/libdruntime/core/sys/posix/sys/wait.d
-index b21eef4..63322ef 100644
---- a/libphobos/libdruntime/core/sys/posix/sys/wait.d
-+++ b/libphobos/libdruntime/core/sys/posix/sys/wait.d
-@@ -14,12 +14,12 @@
-  */
- module core.sys.posix.sys.wait;
- 
-+version (Posix):
- private import core.sys.posix.config;
- public import core.sys.posix.sys.types; // for id_t, pid_t
- public import core.sys.posix.signal;    // for siginfo_t (XSI)
- //public import core.sys.posix.resource; // for rusage (XSI)
- 
--version (Posix):
- extern (C):
- 
- //
-diff --git a/libphobos/libdruntime/core/sys/windows/dll.d b/libphobos/libdruntime/core/sys/windows/dll.d
-index 271091b..1a6e2bf 100644
---- a/libphobos/libdruntime/core/sys/windows/dll.d
-+++ b/libphobos/libdruntime/core/sys/windows/dll.d
-@@ -297,7 +297,7 @@ public:
-      *
-      * _tls_index is initialized by the compiler to 0, so we can use this as a test.
-      */
--    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex ) nothrow
-+    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex )
-     {
-         version (Win64)
-             return true;                // fixed
-@@ -312,11 +312,15 @@ public:
-             return true;
- 
-         void** peb;
--        asm
--        {
--            mov EAX,FS:[0x30];
--            mov peb, EAX;
--        }
-+        version( GNU_InlineAsm ) 
-+            asm { "movl %%fs:0x30, %0;" : "=r" peb; }
-+        else        
-+            asm
-+            {
-+                mov EAX,FS:[0x30];
-+                mov peb, EAX;
-+            }
-+        
-         dll_aux.LDR_MODULE *ldrMod = dll_aux.findLdrModule( hInstance, peb );
-         if( !ldrMod )
-             return false; // not in module list, bail out
-diff --git a/libphobos/libdruntime/core/sys/windows/threadaux.d b/libphobos/libdruntime/core/sys/windows/threadaux.d
-index 1054b51..44559d0 100644
---- a/libphobos/libdruntime/core/sys/windows/threadaux.d
-+++ b/libphobos/libdruntime/core/sys/windows/threadaux.d
-@@ -162,26 +162,39 @@ private:
-         }
- 
-         // get linear address of TEB of current thread
--        static void** getTEB() nothrow
-+        static void** getTEB() 
-         {
-             version(Win32)
-             {
--                asm
-+                version( GNU_InlineAsm ) 
-                 {
--                    naked;
--                    mov EAX,FS:[0x18];
--                    ret;
-+                    void** teb;
-+                    asm 
-+                    { 
-+                        "movl %%fs:0x18, %0;" : "=r" teb;
-+                    }
-+                    return teb;
-                 }
-+                else
-+                    asm
-+                    {
-+                        naked;
-+                        mov EAX,FS:[0x18];
-+                        ret;
-+                    }
-             }
-             else version(Win64)
-             {
--                asm
--                {
--                    naked;
--                    mov RAX,0x30;
--                    mov RAX,GS:[RAX]; // immediate value causes fixup
--                    ret;
--                }
-+                version(GNU_InlineAsm)
-+                    static assert(false, "unsupported");
-+                else
-+                    asm
-+                    {
-+                        naked;
-+                        mov RAX,0x30;
-+                        mov RAX,GS:[RAX]; // immediate value causes fixup
-+                        ret;
-+                    }
-             }
-             else
-             {
 diff --git a/libphobos/libdruntime/core/thread.d b/libphobos/libdruntime/core/thread.d
-index 104e2b9..47b43ef 100644
+index 284a57b..8b77118 100644
 --- a/libphobos/libdruntime/core/thread.d
 +++ b/libphobos/libdruntime/core/thread.d
-@@ -126,6 +126,23 @@ version( Windows )
-         extern (Windows) alias uint function(void*) btex_fptr;
-         extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*);
- 
-+        version( MinGW )
-+        {
-+            import gcc.builtins;
-+        
-+            // NOTE: The memory between the addresses of _tls_start and _tls_end
-+            //       is the storage for thread-local data in MinGW.  Both of
-+            //       these are defined in tlssup.c.
-+            extern (C)
-+            {
-+                extern int _tls_start;
-+                extern int _tls_end;
-+            }
-+            
-+            alias _tls_start _tlsstart;
-+            alias _tls_end _tlsend;
-+        }        
-+
-         //
-         // Entry point for Windows threads
-         //
-@@ -2779,6 +2796,19 @@ private void* getStackBottom()
-                  mov RAX, GS:[RAX];
-                  ret;
-             }
-+        else version( GNU_InlineAsm )
-+        {
-+            void *bottom;
-+
-+            version( X86 )
-+                asm{ "movl %%fs:4, %0;" : "=r" bottom; }                
-+            else version( X86_64 )
-+                asm{ "movq %%gs:8, %0;" : "=r" bottom; }            
-+            else
-+                static assert( false, "Platform not supported.");
-+
-+            return bottom;
-+        }                    
-         else
-             static assert(false, "Architecture not supported.");
-     }
-@@ -3300,6 +3330,10 @@ private
+@@ -3352,6 +3352,10 @@ private
                  jmp RCX;
              }
          }
@@ -245,60 +70,6 @@ index 104e2b9..47b43ef 100644
          else static if( __traits( compiles, ucontext_t ) )
          {
              Fiber   cfib = Fiber.getThis();
-@@ -4125,6 +4159,10 @@ private:
-              */
-             pstack += int.sizeof * 1;
-         }
-+        else version(MinGW)
-+        {
-+            assert(0, "unimplemented");
-+        }
-         else static if( __traits( compiles, ucontext_t ) )
-         {
-             getcontext( &m_utxt );
-diff --git a/libphobos/libdruntime/rt/dmain2.d b/libphobos/libdruntime/rt/dmain2.d
-index 4236e8a..132b580 100644
---- a/libphobos/libdruntime/rt/dmain2.d
-+++ b/libphobos/libdruntime/rt/dmain2.d
-@@ -376,6 +376,12 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
-     {
-         if (IsDebuggerPresent())
-             trapExceptions = false;
-+        version (MinGW)
-+        {
-+            /* IsDebuggerPresent doesn't detect GDC.  Would be nice to have
-+               some way of detecting valid console output */
-+            trapExceptions = true;
-+        }
-     }
- 
-     void tryExec(scope void delegate() dg)
-diff --git a/libphobos/src/Makefile.am b/libphobos/src/Makefile.am
-index 6040a18..6a29d17 100644
---- a/libphobos/src/Makefile.am
-+++ b/libphobos/src/Makefile.am
-@@ -108,7 +108,7 @@ FREEBSD_OBJS=std/c/freebsd/socket.o
- WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
- 	     std/c/windows/windows.o std/c/windows/winsock.o \
- 	     std/windows/charset.o std/windows/iunknown.o std/windows/registry.o \
--	     std/windows/syserror.o std/__fileinit.o std/internal/windows/advapi32.o
-+	     std/windows/syserror.o std/internal/windows/advapi32.o
- 
- D_EXTRA_OBJS=@D_EXTRA_OBJS@
- 
-diff --git a/libphobos/src/Makefile.in b/libphobos/src/Makefile.in
-index 54ff5e8..f99b362 100644
---- a/libphobos/src/Makefile.in
-+++ b/libphobos/src/Makefile.in
-@@ -276,7 +276,7 @@ FREEBSD_OBJS = std/c/freebsd/socket.o
- WINDOWS_OBJS = std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
- 	     std/c/windows/windows.o std/c/windows/winsock.o \
- 	     std/windows/charset.o std/windows/iunknown.o std/windows/registry.o \
--	     std/windows/syserror.o std/__fileinit.o std/internal/windows/advapi32.o
-+	     std/windows/syserror.o std/internal/windows/advapi32.o
- 
- ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
- 
 diff --git a/libphobos/src/std/outbuffer.d b/libphobos/src/std/outbuffer.d
 index a17a70c..0d69d76 100644
 --- a/libphobos/src/std/outbuffer.d
@@ -347,7 +118,7 @@ index b1b44f9..7026f24 100644
          if (count != -1)
            break;
 diff --git a/setup-gcc.sh b/setup-gcc.sh
-index 214992f..84d4ac1 100755
+index b558d11..47897a8 100755
 --- a/setup-gcc.sh
 +++ b/setup-gcc.sh
 @@ -13,6 +13,7 @@ fi
@@ -358,7 +129,7 @@ index 214992f..84d4ac1 100755
  
  # Read command line arguments
  for arg in "$@"; do
-@@ -63,33 +64,40 @@ if test ! -f gcc/"$gcc_patch_fn"; then
+@@ -47,33 +48,40 @@ if test ! -f gcc/"$gcc_patch_fn"; then
      exit 1
  fi
  
@@ -425,5 +196,5 @@ index 214992f..84d4ac1 100755
  
  if test $d_update_gcc -eq 1; then
 -- 
-1.8.5.2.msysgit.0
+1.9.2.msysgit.0
 

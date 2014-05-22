@@ -32,6 +32,19 @@ if [ "$unzip" == "" ]; then
 	exit 1
 fi
 
+patch=$(which patch 2>/dev/null)
+if [ "$patch" == "" ]; then
+	echo "patch not installed.  Please install via"
+	echo "mingw-get install msys-patch"
+	exit 1
+fi
+
+m4=$(which m4 2>/dev/null)
+if ["$m4" == "" ]; then
+    echo "m4 not installed. Please install via"
+	echo "mingw-get install msys-m4"
+fi
+
 root=$(pwd)
 pushd /crossdev/gdc-4.8/src
 
@@ -548,12 +561,9 @@ function build_gdc {
 
 	popd
 }
-#export GCC_PREFIX="/crossdev/gdc-4.8/release"
-#export PATH=/crossdev/mingw64/bin:$PATH
+
 export PATH="$GCC_PREFIX/bin:$PATH"
-#export LPATH="$GCC_PREFIX/lib;$GCC_PREFIX/x86_64-w64-mingw32/lib"
-#export CPATH="$GCC_PREFIX/include;$GCC_PREFIX/x86_64-w64-mingw32/include"
-build_gdc
+#build_gdc
 
 # get DMD script
 if [ ! -d "GDMD" ]; then
@@ -564,8 +574,9 @@ else
 	cd ..
 fi
 pushd GDMD
+
 #Ok to fail. results in testsuite not running
-PATH=/c/strawberry/perl/bin:$PATH TMPDIR=. cmd /c "pp dmd-script -o gdmd.exe"
+PATH=/d/strawberry/perl/bin:$PATH TMPDIR=. cmd /c "pp dmd-script -o gdmd.exe"
 cp gdmd.exe /crossdev/gdc-4.8/release/bin/
 cp dmd-script /crossdev/gdc-4.8/release/bin/gdmd
 popd

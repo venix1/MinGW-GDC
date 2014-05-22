@@ -1,15 +1,14 @@
-From 597d4ffdc768d80d299f08e4bf5941017d15367f Mon Sep 17 00:00:00 2001
+From 3afaefdcd56d355f5e780f520715603a75b1ebcc Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Fri, 21 Jun 2013 17:27:36 -0500
 Subject: [PATCH] MinGW TLS Support
 
 ---
- libphobos/libdruntime/Makefile.am                 |   3 +-
- libphobos/libdruntime/Makefile.in                 |   3 +-
- libphobos/libdruntime/core/sys/windows/dll.d      |  12 +-
- libphobos/libdruntime/core/sys/windows/mingwasm.S |  35 +++++
- libphobos/libdruntime/core/thread.d               | 148 +++++++++++++++++++++-
- 5 files changed, 194 insertions(+), 7 deletions(-)
+ libphobos/libdruntime/Makefile.am                 |  3 +-
+ libphobos/libdruntime/Makefile.in                 |  3 +-
+ libphobos/libdruntime/core/sys/windows/mingwasm.S | 35 +++++++++
+ libphobos/libdruntime/core/thread.d               | 93 ++++++++++++++++++++++-
+ 4 files changed, 130 insertions(+), 4 deletions(-)
  create mode 100644 libphobos/libdruntime/core/sys/windows/mingwasm.S
 
 diff --git a/libphobos/libdruntime/Makefile.am b/libphobos/libdruntime/Makefile.am
@@ -40,29 +39,6 @@ index 74ea001..04d11e4 100644
  
  
  # Regardless of OS, all import headers are generated.
-diff --git a/libphobos/libdruntime/core/sys/windows/dll.d b/libphobos/libdruntime/core/sys/windows/dll.d
-index 1a6e2bf..b608bb4 100644
---- a/libphobos/libdruntime/core/sys/windows/dll.d
-+++ b/libphobos/libdruntime/core/sys/windows/dll.d
-@@ -24,7 +24,17 @@ version( Windows )
- 
-     extern (C)
-     {
--        version (Win32)
-+		version (MinGW)
-+		{
-+			extern __gshared void* _tls_start;
-+			extern __gshared void* _tls_end;
-+            extern __gshared void* __xl_a;
-+
-+            alias _tls_start _tlsstart;
-+            alias _tls_end   _tlsend;
-+            alias __xl_a     _tls_callbacks_a;		
-+		}
-+        else version (Win32)
-         {
-             extern __gshared void* _tlsstart;
-             extern __gshared void* _tlsend;
 diff --git a/libphobos/libdruntime/core/sys/windows/mingwasm.S b/libphobos/libdruntime/core/sys/windows/mingwasm.S
 new file mode 100644
 index 0000000..49b5918
@@ -105,32 +81,10 @@ index 0000000..49b5918
 +    // 'return' to complete switch
 +    ret;
 diff --git a/libphobos/libdruntime/core/thread.d b/libphobos/libdruntime/core/thread.d
-index 3d858af..2ec7a13 100644
+index 8b77118..75d871a 100644
 --- a/libphobos/libdruntime/core/thread.d
 +++ b/libphobos/libdruntime/core/thread.d
-@@ -3069,6 +3069,21 @@ private
-             version = AlignFiberStackTo16Byte;
-         }
-     }
-+    else version( GNU_InlineAsm )
-+    {
-+        version( MinGW64 )
-+        {
-+            version = GNU_AsmX86_64_Windows;
-+            version = AlignFiberStackTo16Byte;
-+			version = AsmExternal;
-+        }
-+        else version( MinGW )
-+        {
-+            version = GNU_AsmX86_Windows;
-+            version = AlignFiberStackTo16Byte;
-+			version = AsmExternal;
-+        } 
-+    }	
-     else version( PPC )
-     {
-         version( Posix )
-@@ -3337,10 +3352,99 @@ private
+@@ -3352,10 +3352,99 @@ private
                  jmp RCX;
              }
          }
@@ -232,54 +186,6 @@ index 3d858af..2ec7a13 100644
          else static if( __traits( compiles, ucontext_t ) )
          {
              Fiber   cfib = Fiber.getThis();
-@@ -4332,9 +4436,45 @@ private:
-              */
-             pstack += int.sizeof * 1;
-         }
--        else version(MinGW)
-+        else version( GNU_AsmX86_Windows )
-         {
--            assert(0, "unimplemented");
-+            version( StackGrowsDown ) {} else static assert( false );
-+
-+            // Currently, MinGW doesn't utilize SEH exceptions.
-+            // See DMD AsmX86_Windows If this code ever becomes fails and SEH is used.
-+
-+            push( 0x00000000 );                                     // Return address of fiber_entryPoint call
-+            push( cast(size_t) &fiber_entryPoint );                 // EIP
-+            push( 0x00000000 );                                     // EBP
-+            push( 0x00000000 );                                     // EDI
-+            push( 0x00000000 );                                     // ESI
-+            push( 0x00000000 );                                     // EBX
-+            push( 0xFFFFFFFF );                                     // FS:[0] - Current SEH frame
-+            push( cast(size_t) m_ctxt.bstack );                     // FS:[4] - Top of stack
-+            push( cast(size_t) m_ctxt.bstack - m_size );            // FS:[8] - Bottom of stack
-+            push( 0x00000000 );                                     // EAX
-+        }
-+        else version( GNU_AsmX86_64_Windows )
-+        {
-+            push( 0x00000000_00000000 );                            // Return address of fiber_entryPoint call
-+            push( cast(size_t) &fiber_entryPoint );                 // RIP
-+            push( 0x00000000_00000000 );                            // RBP
-+            push( 0x00000000_00000000 );                            // RBX
-+            push( 0x00000000_00000000 );                            // R12
-+            push( 0x00000000_00000000 );                            // R13
-+            push( 0x00000000_00000000 );                            // R14
-+            push( 0x00000000_00000000 );                            // R15
-+            push( 0xFFFFFFFF_FFFFFFFF );                            // GS:[0] - Current SEH frame
-+            version( StackGrowsDown )
-+            {
-+                push( cast(size_t) m_ctxt.bstack );                 // GS:[8]  - Top of stack
-+                push( cast(size_t) m_ctxt.bstack - m_size );        // GS:[16] - Bottom of stack
-+            }
-+            else
-+            {
-+                push( cast(size_t) m_ctxt.bstack );                 // GS:[8]  - Top of stack
-+                push( cast(size_t) m_ctxt.bstack + m_size );        // GS:[16] - Bottom of stack
-+            }
-         }
-         else static if( __traits( compiles, ucontext_t ) )
-         {
 -- 
-1.8.5.2.msysgit.0
+1.9.2.msysgit.0
 
