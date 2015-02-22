@@ -1,45 +1,43 @@
-From fb371e6153cd54a778b5772d07046f4ac6055bfd Mon Sep 17 00:00:00 2001
+From a720e4682798a04bf19a4aa83537e7d0b762ea7d Mon Sep 17 00:00:00 2001
 From: Nobody <nobody@localhost>
 Date: Fri, 13 Sep 2013 18:30:12 -0500
 Subject: [PATCH] Remove -fPIC for MinGW
 
 ---
- libbacktrace/configure    | 5 ++++-
- libbacktrace/configure.ac | 5 ++++-
- 2 files changed, 8 insertions(+), 2 deletions(-)
+ libbacktrace/configure    | 4 ++++
+ libbacktrace/configure.ac | 4 ++++
+ 2 files changed, 8 insertions(+)
 
 diff --git a/libbacktrace/configure b/libbacktrace/configure
-index 46ad9ee..1ad8485 100644
+index f4f9d05..c6b93e8 100644
 --- a/libbacktrace/configure
 +++ b/libbacktrace/configure
-@@ -11688,7 +11688,10 @@ fi
- # complicate dependencies.  Instead, we just compile with -fPIC.
+@@ -11698,6 +11698,10 @@ fi
  PIC_FLAG=
  if test -n "${with_target_subdir}"; then
--  PIC_FLAG=-fPIC
-+   case "${host}" in
-+   *-*-mingw*) ;;
-+   *) PIC_FLAG=-fPIC ;;
-+   esac
+   PIC_FLAG=-fPIC
++  case "${host}" in
++    *mingw*) PIC_FLAG="";;
++    *) PIC_FLAG=-fPIC ;;
++  esac
  fi
- 
- 
+ # Similarly, use -fPIC with --enable-host-shared:
+ # Check whether --enable-host-shared was given.
 diff --git a/libbacktrace/configure.ac b/libbacktrace/configure.ac
-index 28b2a1c..5edfa34 100644
+index 878bd2c..fdeab26 100644
 --- a/libbacktrace/configure.ac
 +++ b/libbacktrace/configure.ac
-@@ -163,7 +163,10 @@ fi
- # complicate dependencies.  Instead, we just compile with -fPIC.
+@@ -164,6 +164,10 @@ fi
  PIC_FLAG=
  if test -n "${with_target_subdir}"; then
--  PIC_FLAG=-fPIC
+   PIC_FLAG=-fPIC
 +   case "${host}" in
-+   *-*-mingw*) ;;
-+   *) PIC_FLAG=-fPIC ;;
++     *mingw*) PIC_FLAG="";;
++     *) PIC_FLAG=-fPIC ;;
 +   esac
  fi
- AC_SUBST(PIC_FLAG)
- 
+ # Similarly, use -fPIC with --enable-host-shared:
+ AC_ARG_ENABLE(host-shared,
 -- 
-1.8.1.msysgit.1
+1.9.2.msysgit.0
 

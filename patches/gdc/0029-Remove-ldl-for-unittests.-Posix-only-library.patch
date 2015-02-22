@@ -1,0 +1,67 @@
+From 51979be0ea6188e08e7bd7393dc5ddbeef61efc5 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Sat, 21 Feb 2015 22:26:10 -0600
+Subject: [PATCH] Remove -ldl for unittests.  Posix-only library
+
+---
+ libphobos/libdruntime/Makefile.am | 2 +-
+ libphobos/libdruntime/Makefile.in | 2 +-
+ libphobos/src/Makefile.am         | 2 +-
+ libphobos/src/Makefile.in         | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/libphobos/libdruntime/Makefile.am b/libphobos/libdruntime/Makefile.am
+index 52642ff..07c0bce 100644
+--- a/libphobos/libdruntime/Makefile.am
++++ b/libphobos/libdruntime/Makefile.am
+@@ -225,7 +225,7 @@ endif
+ 	$(RANLIB) $@
+ 
+ unittest: libgdruntime.a libgdruntime_t.a unittest.o
+-	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) -ldl
++	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS)
+ 
+ #--------------------------------------#
+ # Install, doc, etc targets
+diff --git a/libphobos/libdruntime/Makefile.in b/libphobos/libdruntime/Makefile.in
+index 0414b33..0204673 100644
+--- a/libphobos/libdruntime/Makefile.in
++++ b/libphobos/libdruntime/Makefile.in
+@@ -631,7 +631,7 @@ libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o)
+ 	$(RANLIB) $@
+ 
+ unittest: libgdruntime.a libgdruntime_t.a unittest.o
+-	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) -ldl
++	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS)
+ 
+ #--------------------------------------#
+ # Install, doc, etc targets
+diff --git a/libphobos/src/Makefile.am b/libphobos/src/Makefile.am
+index de99b58..8310b00 100644
+--- a/libphobos/src/Makefile.am
++++ b/libphobos/src/Makefile.am
+@@ -126,7 +126,7 @@ libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
+ 	$(RANLIB) $@
+ 
+ unittest: libgphobos2.a libgphobos2_t.a unittest.o
+-	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
++	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS)
+ 
+ #--------------------------------------#
+ # Install, doc, etc targets
+diff --git a/libphobos/src/Makefile.in b/libphobos/src/Makefile.in
+index 6d3a91f..05aa3c9 100644
+--- a/libphobos/src/Makefile.in
++++ b/libphobos/src/Makefile.in
+@@ -538,7 +538,7 @@ libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
+ 	$(RANLIB) $@
+ 
+ unittest: libgphobos2.a libgphobos2_t.a unittest.o
+-	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
++	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS)
+ 
+ #--------------------------------------#
+ # Install, doc, etc targets
+-- 
+1.9.2.msysgit.0
+

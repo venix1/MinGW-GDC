@@ -1,0 +1,32 @@
+From 4dcb1926d0ba36de395853ab3395c39b78e9a186 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Thu, 19 Feb 2015 18:01:24 -0600
+Subject: [PATCH] Merge into correct patches"
+
+---
+ libphobos/libdruntime/gcc/gthreads/win32.d | 6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/libphobos/libdruntime/gcc/gthreads/win32.d b/libphobos/libdruntime/gcc/gthreads/win32.d
+index 5fb9a38..241a488 100644
+--- a/libphobos/libdruntime/gcc/gthreads/win32.d
++++ b/libphobos/libdruntime/gcc/gthreads/win32.d
+@@ -126,12 +126,12 @@ int gthread_key_create(gthread_key_t* key, void function(void*) dtor)
+       /* Mingw runtime will run the dtors in reverse order for each thread
+          when the thread exits.  */
+       version (MinGW)
+-        return __mingwthr_key_dtor(*key, dtor);
++          return __mingwthr_key_dtor(*key, dtor);
++	  else
++	      return 0;
+     }
+   else
+     return GetLastError();
+-
+-  return 0;
+ }
+ 
+ int gthread_key_delete(gthread_key_t key)
+-- 
+1.9.2.msysgit.0
+

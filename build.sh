@@ -1,17 +1,28 @@
 # Configuration options
 
 # Which branch to build against
-GDC_BRANCH="gdc-4.8"
+GDC_BRANCH="master"
+GCC_DOWNLOAD="http://mirrors.concertpass.com/gcc/releases/gcc-4.9.2/gcc-4.9.2.tar.bz2"
+GCC_VERSION="4.9.2"
+BUILD_PATH="/crossdev/gdc-$GCC_VERSION"
 
-# Force a GDC Revision.  Empty/undefined uses head.
-#GDC_VERSION="6296cfbe9756572e6d91e83e5d786ce5477fcb1b"
+BINUTILS_VERSION=
+GDC_BRANCH=gdc-4.9
+# specific commit. Empty is head
+GDC_COMMIT=
+
+export GDC_BRANCH GCC_VERSION BUILD_PATH GDC_BRANCH GDC_COMMIT
+
+
+# Exit on error
+set -e 
 
 	
 ### Build Code
 # Sanity test
 DRIVE=$(pwd -W | cut -c 1)
-mkdir -p /$DRIVE/crossdev/gdc-4.8/src
-if [ ! -d /crossdev/gdc-4.8 ]; then
+mkdir -p /$DRIVE$BUILD_PATH/src
+if [ ! -d $BUILD_PATH ]; then
 	echo "Santity test failed. /$DRIVE/crossdev does not map to /crossdev"
 	echo "Please ensure a mapping to crossdev exists in /etc/fstab"
 	echo "/crossdev must exist on the same drive this script is executed from"
@@ -40,50 +51,51 @@ if [ "$patch" == "" ]; then
 fi
 
 m4=$(which m4 2>/dev/null)
-if ["$m4" == "" ]; then
+if [ "$m4" == "" ]; then
     echo "m4 not installed. Please install via"
 	echo "mingw-get install msys-m4"
 fi
 
 root=$(pwd)
-pushd /crossdev/gdc-4.8/src
+pushd $BUILD_PATH/src
 
 # Download and install x86-64 build tools
 if [ ! -e "7za.exe" ]; then
 	if [ ! -e "7za920.zip" ]; then
-		wget http://downloads.sourceforge.net/sevenzip/7za920.zip
+		wget http://downloads.sourceforge.net/project/sevenzip/7-Zip/9.20/7za920.zip
 	fi
 	unzip 7za920.zip 7za.exe
 fi
 	
 if [ ! -d "/crossdev/mingw64" ]; then
 	if [ ! -e "x86_64-4.8.2-release-win32-sjlj-rt_v3-rev0.7z" ]; then
-		wget http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.8.2/threads-win32/sjlj/x86_64-4.8.2-release-win32-sjlj-rt_v3-rev0.7z/download
+		wget "http://downloads.sourceforge.net/project/mingw-w64/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.9.2/threads-win32/sjlj/x86_64-4.9.2-release-win32-sjlj-rt_v3-rev1.7z"
 	fi
-	7za x -o/crossdev x86_64-4.8.2-release-win32-sjlj-rt_v3-rev0.7z 
+	7za x -o/crossdev x86_64-4.9.2-release-win32-sjlj-rt_v3-rev1.7z
 fi
 
 export PATH=/crossdev/mingw64/bin:$PATH
 # Configure x86-64 build environment
-gcc -v
+#gcc -v
 
 
 # Install some basic DLL dependencies
-mkdir -p /crossdev/gdc-4.8/release/bin
+mkdir -p $BUILD_PATH/release/bin
 
 if [ ! -e "libiconv-1.14-3-mingw32-dll.tar.lzma" ]; then
+#http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.14.tar.gz
 	wget http://sourceforge.net/projects/mingw/files/MinGW/Base/libiconv/libiconv-1.14-3/libiconv-1.14-3-mingw32-dll.tar.lzma/download
-#	tar --lzma -xvf libiconv-1.14-3-mingw32-dll.tar.lzma -C /crossdev/gdc-4.8/release
+#	tar --lzma -xvf libiconv-1.14-3-mingw32-dll.tar.lzma -C $BUILD_PATH/release
 fi
 
 if [ ! -e "gettext-0.18.3.1-1-mingw32-dll.tar.lzma" ]; then
 	wget http://sourceforge.net/projects/mingw/files/MinGW/Base/gettext/gettext-0.18.3.1-1/gettext-0.18.3.1-1-mingw32-dll.tar.lzma/download
-#	tar --lzma -xvf gettext-0.18.3.1-1-mingw32-dll.tar.lzma -C /crossdev/gdc-4.8/release
+#	tar --lzma -xvf gettext-0.18.3.1-1-mingw32-dll.tar.lzma -C $BUILD_PATH/release
 fi
 
 if [ ! -e "gcc-core-4.8.1-3-mingw32-dll.tar.lzma" ]; then
 	wget http://hivelocity.dl.sourceforge.net/project/mingw/MinGW/Base/gcc/Version4/gcc-4.8.1-3/gcc-core-4.8.1-3-mingw32-dll.tar.lzma
-#	tar --lzma -xvf gcc-core-4.8.1-3-mingw32-dll.tar.lzma -C /crossdev/gdc-4.8/release bin/libgcc_s_dw2-1.dll 
+#	tar --lzma -xvf gcc-core-4.8.1-3-mingw32-dll.tar.lzma -C $BUILD_PATH/release bin/libgcc_s_dw2-1.dll 
 fi
 
 # Extracts archive and converts to git repo. 
@@ -119,16 +131,16 @@ function mkgit {
 set -e
 
 # Compile binutils
-mkgit binutils-2.23.2.tar.gz binutils-2.23.2
-if [ ! -e binutils-2.23.2/build/.built ]; then
-	if [ ! -e "binutils-2.23.2.tar.gz" ]; then
-		wget http://ftp.gnu.org/gnu/binutils/binutils-2.23.2.tar.gz
+#mkgit binutils-2.25.tar.gz binutils-2.25
+if [ ! -e binutils-2.25/build/.built ]; then
+	if [ ! -e "binutils-2.25.tar.gz" ]; then
+		wget http://ftp.gnu.org/gnu/binutils/binutils-2.25.tar.gz
 	fi
 	
-	#mkgit binutils-2.23.2.tar.gz binutils-2.23.2
-	if [ ! -d "binutils-2.23.2" ]; then
-		tar -xvzf binutils-2.23.2.tar.gz
-		cd binutils-2.23.2
+	#mkgit binutils-2.25.tar.gz binutils-2.25
+	if [ ! -d "binutils-2.25" ]; then
+		tar -xvzf binutils-2.25.tar.gz
+		cd binutils-2.25
 		# prune unnecessary folders.
 		git init
 		git config user.email "nobody@localhost"
@@ -138,32 +150,32 @@ if [ ! -e binutils-2.23.2/build/.built ]; then
 		git commit -m "MinGW/GDC restore point"
 		cd ..
 	else
-		cd binutils-2.23.2
+		cd binutils-2.25
 		git reset --hard
 		git clean -f	
 		cd ..
 	fi	
-	pushd binutils-2.23.2
-	patch -p1 < $root/patches/mingw-tls-binutils-2.23.1.patch
+	pushd binutils-2.25
+	#patch -p1 < $root/patches/mingw-tls-binutils-2.23.1.patch
 	mkdir -p build
 	cd build
-	../configure --prefix=/crossdev/gdc-4.8/release --build=x86_64-w64-mingw32 \
+	../configure --prefix=$BUILD_PATH/release --build=x86_64-w64-mingw32 \
 	  --enable-targets=x86_64-w64-mingw32,i686-w64-mingw32 \
-	  CFLAGS="-O2 -m32" LDFLAGS="-s -m32"
+	  CFLAGS="-O2" LDFLAGS="-s"
 	make && make install
 	touch .built
 	popd 
 fi
 
 # Compile MinGW64 runtime
-if [ ! -e mingw-w64-v3.0.0/build/.built ]; then
-	if [ ! -e "mingw-w64-v3.0.0.tar.bz2" ]; then
-		wget http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-v3.0.0.tar.bz2/download
+if [ ! -e mingw-w64-v4.0-rc2/build/.built ]; then
+	if [ ! -e "mingw-w64-v4.0-rc2.tar.bz2" ]; then
+		wget http://downloads.sourceforge.net/project/mingw-w64/mingw-w64/mingw-w64-release/mingw-w64-v4.0-rc2.tar.bz2
 	fi
 
-	if [ ! -d "mingw-w64-v3.0.0" ]; then
-		tar -xvjf mingw-w64-v3.0.0.tar.bz2
-		cd mingw-w64-v3.0.0
+	if [ ! -d "mingw-w64-v4.0-rc2" ]; then
+		tar -xvjf mingw-w64-v4.0-rc2.tar.bz2
+		cd mingw-w64-v4.0-rc2
 		# prune unnecessary folders.
 		git init
 		git config user.email "nobody@localhost"
@@ -173,17 +185,22 @@ if [ ! -e mingw-w64-v3.0.0/build/.built ]; then
 		git commit -am "MinGW/GDC restore point"
 		cd ..
 	else
-		cd mingw-w64-v3.0.0
+		cd mingw-w64-v4.0-rc2
 		git reset --hard
 		git clean -f	
 		cd ..
 	fi		
-	pushd mingw-w64-v3.0.0
-	mkdir -p build
+	pushd mingw-w64-v4.0-rc2
+	mkdir -p build/
 	cd build
-	../configure --prefix=/crossdev/gdc-4.8/release --build=x86_64-w64-mingw32 \
+	# Handle mingw-w64-libraries
+	../configure --prefix=$BUILD_PATH/release/x86_64-w64-mingw32 --host=x86_64-w64-mingw32 \
 	  --enable-lib32 --enable-sdk=all
+	pushd mingw-w64-headers
 	make && make install
+	popd
+	make && make install
+	
 	touch .built
 	popd 
 fi
@@ -218,7 +235,7 @@ if [ ! -e gmp-4.3.2/build/.built ]; then
 	# Make 32
 	mkdir -p build/32
 	cd build/32
-	../../configure --prefix=/crossdev/gdc-4.8/gmp-4.3.2/32 \
+	../../configure --prefix=$BUILD_PATH/gmp-4.3.2/32 \
 	  --build=x86_64-w64-mingw32 --enable-cxx --disable-static --enable-shared \
 	  LD="ld.exe -m i386pe" CFLAGS="-O2 -m32" CXXFLAGS="-O2 -m32" \
 	  LDFLAGS="-m32 -s" ABI=32
@@ -228,7 +245,7 @@ if [ ! -e gmp-4.3.2/build/.built ]; then
 	# Make 64
 	mkdir -p build/64
 	cd build/64
-	../../configure --prefix=/crossdev/gdc-4.8/gmp-4.3.2/64 \
+	../../configure --prefix=$BUILD_PATH/gmp-4.3.2/64 \
 	  --build=x86_64-w64-mingw32 --enable-cxx --disable-static --enable-shared \
 	  CFLAGS="-O2" CXXFLAGS="-O2" LDFLAGS="-s" ABI=64 \
 	  NM=/crossdev/mingw64/bin/nm
@@ -266,20 +283,20 @@ if [ ! -e mpfr-3.1.1/build/.built ]; then
 	mkdir -p build/32
 	cd build/32
 	#export PATH="$(PATH):$(GMP_STAGE)/32/bin"
-	../../configure --prefix=/crossdev/gdc-4.8/mpfr-3.1.1/32 \
+	../../configure --prefix=$BUILD_PATH/mpfr-3.1.1/32 \
 	  --build=x86_64-w64-mingw32 --disable-static --enable-shared \
-	  CFLAGS="-O2 -m32 -I/crossdev/gdc-4.8/gmp-4.3.2/32/include" \
-	  LDFLAGS="-m32 -s -L/crossdev/gdc-4.8/gmp-4.3.2/32/lib"
+	  CFLAGS="-O2 -m32 -I$BUILD_PATH/gmp-4.3.2/32/include" \
+	  LDFLAGS="-m32 -s -L$BUILD_PATH/gmp-4.3.2/32/lib"
 	make && make install
 	cd ../..
 	# Make 64
 	mkdir -p build/64
 	cd build/64
 	#export PATH="$(PATH):$(GMP_STAGE)/64/bin"
-	../../configure --prefix=/crossdev/gdc-4.8/mpfr-3.1.1/64 \
+	../../configure --prefix=$BUILD_PATH/mpfr-3.1.1/64 \
 	  --build=x86_64-w64-mingw32 --disable-static --enable-shared \
-	  CFLAGS="-O2 -I/crossdev/gdc-4.8/gmp-4.3.2/64/include" \
-	  LDFLAGS="-s -L/crossdev/gdc-4.8/gmp-4.3.2/64/lib"
+	  CFLAGS="-O2 -I$BUILD_PATH/gmp-4.3.2/64/include" \
+	  LDFLAGS="-s -L$BUILD_PATH/gmp-4.3.2/64/lib"
 	make && make install
 	cd ..
 	touch .built
@@ -315,20 +332,20 @@ if [ ! -e mpc-1.0.1/build/.built ]; then
 	# Make 32
 	mkdir -p build/32
 	cd build/32
-	../../configure --prefix=/crossdev/gdc-4.8/mpc-1.0.1/32 \
+	../../configure --prefix=$BUILD_PATH/mpc-1.0.1/32 \
 	  --build=x86_64-w64-mingw32 --disable-static --enable-shared \
-	  --with-gmp=/crossdev/gdc-4.8/gmp-4.3.2/32 \
-	  --with-mpfr=/crossdev/gdc-4.8/mpfr-3.1.1/32 \
+	  --with-gmp=$BUILD_PATH/gmp-4.3.2/32 \
+	  --with-mpfr=$BUILD_PATH/mpfr-3.1.1/32 \
 	  CFLAGS="-O2 -m32" LDFLAGS="-m32 -s"
 	make && make install
 	cd ../..
 	# Make 64
 	mkdir -p build/64
 	cd build/64
-	../../configure --prefix=/crossdev/gdc-4.8/mpc-1.0.1/64 \
+	../../configure --prefix=$BUILD_PATH/mpc-1.0.1/64 \
 	  --build=x86_64-w64-mingw32 --disable-static --enable-shared \
-	  --with-gmp=/crossdev/gdc-4.8/gmp-4.3.2/64 \
-	  --with-mpfr=/crossdev/gdc-4.8/mpfr-3.1.1/64 \
+	  --with-gmp=$BUILD_PATH/gmp-4.3.2/64 \
+	  --with-mpfr=$BUILD_PATH/mpfr-3.1.1/64 \
 	  CFLAGS="-O2" LDFLAGS="-s"
 	  make && make install
 	cd ..
@@ -366,18 +383,18 @@ if [ ! -e isl-0.11.1/build/.built ]; then
 	pushd isl-0.11.1
 	mkdir -p build/32
 	cd build/32
-	../../configure --prefix=/crossdev/gdc-4.8/isl-0.11.1/32 \
+	../../configure --prefix=$BUILD_PATH/isl-0.11.1/32 \
 	  --build=x86_64-w64-mingw32 --enable-shared \
-	  --with-gmp-prefix=/crossdev/gdc-4.8/gmp-4.3.2/32 \
+	  --with-gmp-prefix=$BUILD_PATH/gmp-4.3.2/32 \
 	  CFLAGS="-O2 -m32" LDFLAGS="-m32 -s"
 	make && make install
 	cd ../..
 	# Make 64
 	mkdir -p build/64
 	cd build/64
-	../../configure --prefix=/crossdev/gdc-4.8/isl-0.11.1/64 \
+	../../configure --prefix=$BUILD_PATH/isl-0.11.1/64 \
 	  --build=x86_64-w64-mingw32 --enable-shared \
-	  --with-gmp-prefix=/crossdev/gdc-4.8/gmp-4.3.2/64 \
+	  --with-gmp-prefix=$BUILD_PATH/gmp-4.3.2/64 \
 	  CFLAGS="-O2" LDFLAGS="-s"
 	  make && make install
 	cd ..
@@ -417,10 +434,10 @@ if [ ! -e cloog-0.18.0/build/.built ]; then
 	mkdir -p build/32
 	cd build/32
 	 #export PATH="$(PATH):$(GMP_STAGE)/32/bin:$(PPL_STAGE)/32/bin"
-	../../configure --prefix=/crossdev/gdc-4.8/cloog-0.18.0/32 \
+	../../configure --prefix=$BUILD_PATH/cloog-0.18.0/32 \
 	  --build=x86_64-w64-mingw32 --disable-static --enable-shared \
-	  --with-gmp-prefix=/crossdev/gdc-4.8/gmp-4.3.2/32 \
-      --with-isl-prefix=/crossdev/gdc-4.8/isl-0.11.1/32 \
+	  --with-gmp-prefix=$BUILD_PATH/gmp-4.3.2/32 \
+      --with-isl-prefix=$BUILD_PATH/isl-0.11.1/32 \
 	  CFLAGS="-O2 -m32" CXXFLAGS="-O2 -m32" LDFLAGS="-s -m32"
 	  make && make install
 	cd ../..
@@ -428,10 +445,10 @@ if [ ! -e cloog-0.18.0/build/.built ]; then
 	mkdir -p build/64
 	cd build/64
 	 #export PATH="$(PATH):$(GMP_STAGE)/32/bin:$(PPL_STAGE)/32/bin"
-	../../configure --prefix=/crossdev/gdc-4.8/cloog-0.18.0/64 \
+	../../configure --prefix=$BUILD_PATH/cloog-0.18.0/64 \
 	  --build=x86_64-w64-mingw32 --disable-static --enable-shared \
-	  --with-gmp-prefix=/crossdev/gdc-4.8/gmp-4.3.2/64 \
-      --with-isl-prefix=/crossdev/gdc-4.8/isl-0.11.1/64 \
+	  --with-gmp-prefix=$BUILD_PATH/gmp-4.3.2/64 \
+      --with-isl-prefix=$BUILD_PATH/isl-0.11.1/64 \
 	  CFLAGS="-O2" CXXFLAGS="-O2" LDFLAGS="-s"
 	make && make install
 	cd ..
@@ -439,18 +456,18 @@ if [ ! -e cloog-0.18.0/build/.built ]; then
 	popd
 fi
 
-export GCC_PREFIX="/crossdev/gdc-4.8/release"
+export GCC_PREFIX="$BUILD_PATH/release"
 
 # Copy runtime files to release
 mkdir -p $GCC_PREFIX/x86_64-w64-mingw32
 mkdir -p $GCC_PREFIX/x86_64-w64-mingw32/bin32
 mkdir -p $GCC_PREFIX/x86_64-w64-mingw32/lib32
 
-GMP_STAGE=/crossdev/gdc-4.8/gmp-4.3.2/
-MPFR_STAGE=/crossdev/gdc-4.8/mpfr-3.1.1/
-MPC_STAGE=/crossdev/gdc-4.8/mpc-1.0.1/
-ISL_STAGE=/crossdev/gdc-4.8/isl-0.11.1/
-CLOOG_STAGE=/crossdev/gdc-4.8/cloog-0.18.0/
+GMP_STAGE=$BUILD_PATH/gmp-4.3.2/
+MPFR_STAGE=$BUILD_PATH/mpfr-3.1.1/
+MPC_STAGE=$BUILD_PATH/mpc-1.0.1/
+ISL_STAGE=$BUILD_PATH/isl-0.11.1/
+CLOOG_STAGE=$BUILD_PATH/cloog-0.18.0/
 
 cp -Rp $GMP_STAGE/64/*		$GCC_PREFIX/x86_64-w64-mingw32/
 cp -Rp $GMP_STAGE/32/bin/*	$GCC_PREFIX/x86_64-w64-mingw32/bin32
@@ -477,26 +494,28 @@ cp -Rp $GCC_PREFIX/x86_64-w64-mingw32/bin/*.dll $GCC_PREFIX/bin
 
 # Setup GDC and compile
 function build_gdc {
-	if [ ! -e "gcc-4.8.1.tar.bz2" ]; then
-		wget http://ftp.gnu.org/gnu/gcc/gcc-4.8.1/gcc-4.8.1.tar.bz2	
+	fname=$(basename $GCC_DOWNLOAD)
+	dname=$(basename $GCC_DOWNLOAD .tar.bz2)
+	if [ ! -e "$fname" ]; then
+		wget $GCC_DOWNLOAD
 	fi
 
 	# Extract and configure a git repo to allow fast restoration for future builds.
 	# mkgit gcc-4.8.1.tar.bz2 gcc-4.8.1
-	if [ ! -d "gcc-4.8.1" ]; then
-		tar -xvjf gcc-4.8.1.tar.bz2
-		cd gcc-4.8.1
+	if [ ! -d "$dname" ]; then
+		tar -xvjf $fname
+		cd $dname
 		# prune unnecessary folders.
 		git init
 		git config user.email "nobody@localhost"
 		git config user.name "Nobody"
 		git config core.autocrlf false
-		git add *
+		git add -f *
 		git commit -am "MinGW/GDC restore point"
 		git tag mingw_build
 		cd ..
 	else
-		cd gcc-4.8.1
+		cd $dname
 		git reset --hard mingw_build
 		git clean -f -d	
 		cd ..
@@ -525,10 +544,10 @@ function build_gdc {
 		echo "Patching $patch"
 		git am -3 --ignore-whitespace $patch || exit
 	done
-	./setup-gcc.sh ../gcc-4.8.1
+	./setup-gcc.sh ../$dname
 	popd
 
-	pushd gcc-4.8.1
+	pushd $dname
 	patch -p1 < $root/patches/mingw-tls-gcc-4.8.patch
 	
 	# Should use git am
@@ -549,6 +568,7 @@ function build_gdc {
 	  --build=x86_64-w64-mingw32 --enable-targets=all \
 	  --enable-languages=c,c++,d,lto --enable-sjlj-exceptions \
 	  --enable-lto --enable-version-specific-runtime-libs \
+	  --enable-threads=win32 \
 	  --disable-win32-registry --with-gnu-ld \
 	  --with-pkgversion="MinGW-GDC64" \
 	  --with-bugurl="http://gdcproject.org/bugzilla/" \
@@ -563,7 +583,8 @@ function build_gdc {
 }
 
 export PATH="$GCC_PREFIX/bin:$PATH"
-#build_gdc
+build_gdc
+exit
 
 # get DMD script
 if [ ! -d "GDMD" ]; then
@@ -577,8 +598,8 @@ pushd GDMD
 
 #Ok to fail. results in testsuite not running
 PATH=/d/strawberry/perl/bin:$PATH TMPDIR=. cmd /c "pp dmd-script -o gdmd.exe"
-cp gdmd.exe /crossdev/gdc-4.8/release/bin/
-cp dmd-script /crossdev/gdc-4.8/release/bin/gdmd
+cp gdmd.exe $BUILD_PATH/release/bin/
+cp dmd-script $BUILD_PATH/release/bin/gdmd
 popd
 
 # Test build

@@ -1,0 +1,25 @@
+From 2f0c2424f0f05071e7bed6fd522c17c291d97069 Mon Sep 17 00:00:00 2001
+From: Daniel Green <venix1@gmail.com>
+Date: Sat, 21 Feb 2015 21:38:08 -0600
+Subject: [PATCH] Ignore pragma(lib) in Windows modules
+
+---
+ libphobos/configure | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/libphobos/configure b/libphobos/configure
+index 2ff7114..c638305 100755
+--- a/libphobos/configure
++++ b/libphobos/configure
+@@ -4509,6 +4509,8 @@ case "$d_target_os" in
+              DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
+              D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
+              D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
++             DFLAGS="-fignore-unknown-pragma -Wall \$(WERROR) -g -frelease -O2"
++             DFLAGSX="-fignore-unknown-pragma -Wall \$(WERROR) -g -fno-release -funittest"
+              ;;
+ esac
+ 
+-- 
+1.9.2.msysgit.0
+

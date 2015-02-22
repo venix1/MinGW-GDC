@@ -1,4 +1,4 @@
-From 0b9dd46032b27350436c4859c960e953a5fdfa98 Mon Sep 17 00:00:00 2001
+From b18b2426fe7f188548f80ca112935e9de7ec5c3b Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Sun, 29 Sep 2013 09:26:47 -0500
 Subject: [PATCH] MinGW doesn't prefix strtold
@@ -8,10 +8,10 @@ Subject: [PATCH] MinGW doesn't prefix strtold
  1 file changed, 5 deletions(-)
 
 diff --git a/libphobos/libdruntime/core/stdc/stdlib.d b/libphobos/libdruntime/core/stdc/stdlib.d
-index a88c0b4..bac1f08 100644
+index 489323a..5b2c32a 100644
 --- a/libphobos/libdruntime/core/stdc/stdlib.d
 +++ b/libphobos/libdruntime/core/stdc/stdlib.d
-@@ -67,11 +67,6 @@ version (Win64)
+@@ -77,11 +77,6 @@ version (Win64)
          return strtod(nptr, endptr);
      }
  }
@@ -20,9 +20,9 @@ index a88c0b4..bac1f08 100644
 -    real __mingw_strtold(in char* nptr, char** endptr);
 -    alias __mingw_strtold strtold;
 -}
- else
+ else version (Android)
  {
-     real strtold(in char* nptr, char** endptr);
+     real strtold(in char* nptr, char** endptr)
 -- 
-1.8.1.msysgit.1
+1.9.2.msysgit.0
 

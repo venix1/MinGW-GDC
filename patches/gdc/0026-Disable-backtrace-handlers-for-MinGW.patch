@@ -1,29 +1,36 @@
-From cbcd9e7d466b8d4ac953b77ad6a4dba477725a48 Mon Sep 17 00:00:00 2001
+From 1493afc97612c43fc3aab247a53c597d17586755 Mon Sep 17 00:00:00 2001
 From: Daniel Green <venix1@gmail.com>
 Date: Thu, 13 Mar 2014 08:44:52 -0500
 Subject: [PATCH] Disable backtrace handlers for MinGW
 
 ---
- libphobos/libdruntime/core/runtime.d | 6 ++++++
- 1 file changed, 6 insertions(+)
+ libphobos/libdruntime/core/runtime.d | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 diff --git a/libphobos/libdruntime/core/runtime.d b/libphobos/libdruntime/core/runtime.d
-index ad688dc..d9fab1b 100644
+index 46b8bf4..c470bfb 100644
 --- a/libphobos/libdruntime/core/runtime.d
 +++ b/libphobos/libdruntime/core/runtime.d
-@@ -492,6 +492,12 @@ import core.stdc.stdio;
+@@ -480,6 +480,13 @@ extern (C) bool runModuleUnitTests()
+ import core.stdc.stdio;
  Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
  {
-     //printf("runtime.defaultTraceHandler()\n");
 +    version(MinGW) 
 +    {
 +        // None of the current backtrace solutions work with MinGW.
 +        return null;
 +    }
-+    
++    else 
++    {
+     //printf("runtime.defaultTraceHandler()\n");
      static if( __traits( compiles, new LibBacktrace(0) ) )
      {
-         version(Posix)
+@@ -727,4 +734,5 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
+     {
+         return null;
+     }
++    }
+ }
 -- 
-1.8.5.2.msysgit.0
+1.9.2.msysgit.0
 
